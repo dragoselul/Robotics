@@ -2,32 +2,31 @@ import sympy as sp
 
 
 # A_i
-class HomogeneousTransformMatrix:
-    def __init__(self, theta = sp.symbols('theta'), d = sp.symbols('d'), a = sp.symbols('a'), alpha = sp.symbols('alpha')):
-        self.theta = theta
-        self.d = d
-        self.a = a
-        self.alpha = alpha
+class DenavitHartenbergTransformMatrix:
+    def __init__(self):
+        pass
 
         # ----- Classic DH single-step transform -----
-    def get_A_dh(self):
-        cos_alpha, sin_alpha = sp.cos(self.alpha), sp.sin(self.alpha)
-        cos_theta, sin_theta = sp.cos(self.theta), sp.sin(self.theta)
+    @staticmethod
+    def get_A_dh(theta = sp.symbols('theta'), d = sp.symbols('d'), a = sp.symbols('a'), alpha = sp.symbols('alpha')):
+        cos_alpha, sin_alpha = sp.cos(alpha), sp.sin(alpha)
+        cos_theta, sin_theta = sp.cos(theta), sp.sin(theta)
         return sp.Matrix([
-            [cos_theta, -sin_theta*cos_alpha,  sin_theta*sin_alpha, self.a*cos_theta],
-            [sin_theta,  cos_theta*cos_alpha, -cos_theta*sin_alpha, self.a*sin_theta],
-            [0,         sin_alpha,         cos_alpha,        self.d],
+            [cos_theta, -sin_theta*cos_alpha,  sin_theta*sin_alpha, a*cos_theta],
+            [sin_theta,  cos_theta*cos_alpha, -cos_theta*sin_alpha, a*sin_theta],
+            [0,         sin_alpha,         cos_alpha,        d],
             [ 0,      0,      0,    1]
         ])
 
 class ForwardKinematics:
-    def __init__(self, dh_table):
-        self.dh_table = dh_table
+    def __init__(self):
+        pass
 
-    def forward_kinematics_from_dh(self):
+    @staticmethod
+    def forward_kinematics_from_dh(dh_table):
         T = sp.eye(4)
-        for (a, alpha, d, theta) in self.dh_table:
-            A = HomogeneousTransformMatrix(theta, d, a, alpha).get_A_dh()
+        for (a, alpha, d, theta) in dh_table:
+            A = DenavitHartenbergTransformMatrix.get_A_dh(theta, d, a, alpha)
             T = T * A
         return sp.simplify(T)
     

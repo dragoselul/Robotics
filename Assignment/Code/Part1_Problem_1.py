@@ -17,10 +17,9 @@ if __name__ == "__main__":
         (93, 0, 0, 0),
         (50, 0, 0, 0),
         (0, 0, 15, 0)]
-    fk = util.ForwardKinematics(dh_table_for_t0_4)
-    fk = util.ForwardKinematics(dh_table_for_t0_5)
-    T0_4 = fk.forward_kinematics_from_dh()
-    T0_5 = fk.forward_kinematics_from_dh()
+
+    T0_4 = util.ForwardKinematics.forward_kinematics_from_dh(dh_table_for_t0_4)
+    T0_5 = util.ForwardKinematics.forward_kinematics_from_dh(dh_table_for_t0_5)
     sp.pprint(T0_4.evalf(3), use_unicode=True)
     sp.pprint(T0_5.evalf(3), use_unicode=True)
 
