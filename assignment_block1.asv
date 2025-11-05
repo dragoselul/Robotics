@@ -550,19 +550,12 @@ end
 vx = 0;
 vy = -3;
 vz = 0;
-<<<<<<< HEAD
-wz = 0;
-
-solution = [vx; vy; vz];
-
-=======
 wz = 10;
 
 solution = [vx; vy; vz];
 
 solution_under = [vx; vy; vz; 0; 0; wz];
 
->>>>>>> Initial commit with my local MATLAB files
 % Solve the system using the pseudoinverse as the rank is deficient, solve
 % for the linear velocity components, if the jacobian is computed
 % successfully, I should see wz = 0
@@ -570,11 +563,11 @@ solution_under = [vx; vy; vz; 0; 0; wz];
 
 pseudoinverse_J = Jv'*inv(Jv*Jv');
 
-angular_rates = pseudoinverse_J*solution;
-angular_rates = pseudoinverse_J*solution;
-pseudoinverse_J_under = inv(jacobian_psi_90' * jacobian_psi_90)* jacobian_psi_90';
-angular_rates_under = pseudoinverse_J_under*solution_under;
+angular_rates = pseudoinverse_J*solution
 
+pseudoinverse_J_under = inv(jacobian_psi_90' * jacobian_psi_90)* jacobian_psi_90';
+
+angular_rates_under = pseudoinverse_J_under*solution_under
 
 % ChatGPT interpretation of the wz = 0 condition
 
