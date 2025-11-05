@@ -131,3 +131,5 @@ end
 
 %% Problem 6
 
+% The trajectories at this problem simply approximate the joint 
+
