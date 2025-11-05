@@ -513,13 +513,16 @@ load('poses.mat')
 
 pose_index = [1, 36/4 * 1 + 1, 36/4 * 2 + 1, 36/4 * 3 + 1];
 
-jacobian_psi_0 = numericJacobian(jacobian, poses(pose_index(1), :))
-jacobian_psi_90 = numericJacobian(jacobian, poses(pose_index(2), :))
-jacobian_psi_180 = numericJacobian(jacobian, poses(pose_index(3), :))
-jacobian_psi_270 = numericJacobian(jacobian, poses(pose_index(4), :))
+jacobian_psi_0 = numericJacobian(jacobian, poses(pose_index(1), :));
+jacobian_psi_90 = numericJacobian(jacobian, poses(pose_index(2), :));
+jacobian_psi_180 = numericJacobian(jacobian, poses(pose_index(3), :));
+jacobian_psi_270 = numericJacobian(jacobian, poses(pose_index(4), :));
 
 
 save("jacobian_psi_90", "jacobian_psi_90")
+save("jacobian_psi_180", "jacobian_psi_180")
+save("jacobian_psi_270", "jacobian_psi_270")
+save("jacobian_psi_0", "jacobian_psi_0")
 
 %% Exercise 5
 
@@ -550,19 +553,15 @@ end
 vx = 0;
 vy = -3;
 vz = 0;
-<<<<<<< HEAD
 wz = 0;
 
 solution = [vx; vy; vz];
 
-=======
 wz = 10;
 
 solution = [vx; vy; vz];
 
 solution_under = [vx; vy; vz; 0; 0; wz];
-
->>>>>>> Initial commit with my local MATLAB files
 % Solve the system using the pseudoinverse as the rank is deficient, solve
 % for the linear velocity components, if the jacobian is computed
 % successfully, I should see wz = 0

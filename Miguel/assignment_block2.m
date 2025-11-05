@@ -131,5 +131,72 @@ end
 
 %% Problem 6
 
-% The trajectories at this problem simply approximate the joint 
+% The trajectories at this problem simply approximates the joint angles,
+% rates and accelerations as a function of time by computing a series of
+% coefficients
+
+function matrix = coeffMatrix(n, tA, tB)
+
+    % where n is the number of columns of the matrix
+    % matrix ALWAYS has 6 rows (qa, qdot_a, qddot_a, qb, qdot_b, qddot_b)
+    % tA is the initial boundary condition at t0 
+    % tB is the final boundary condition at tfinal
+
+    % this considers the coeffs to be 1 for the angle approx polynomial and
+    % cascaded down
+
+    row14 = [linspace(1, 1, n - 1), 1];
+    row25 = [polyder(row14), 0];
+    row36 = [polyder(polyder(row14)), 0,0];
+
+    row1 = computeNumVect(row14, tA);
+    row2 = computeNumVect(row25, tA); 
+    row3 = computeNumVect(row36, tA);
+    row4 = computeNumVect(row14, tB);
+    row5 = computeNumVect(row25, tB);
+    row6 = computeNumVect(row36, tB);
+
+    matrix = [row1; row2; row3; row4; row5; row6];
+
+end
+
+
+function vector = computeNumVect(X, t)
+
+    % where X is a vector (row)
+    % functions works out its polinomial evaluation like:
+    % [a, b, c] = at^2, bt, c
+    % t is where the vector is evaluated
+
+    % remove 0's at the end of the vector
+
+    % add 0 counter
+    counter = 0;
+    while X(end) == 0
+        X(end) = [];
+        counter = counter + 1;
+    end
+    
+    n = length(X);
+
+    exponents = n-1:-1:0;
+
+    vector = [];
+
+    for i = 1:n
+        
+        vector(end+1) = t^exponents(i) * X(i);
+        
+    end 
+
+    vector = [vector, zeros(1, counter)];
+
+end
+
+% Test
+
+% coeffMatrix(6, 0, 2)
+
+
+
 
