@@ -24,9 +24,12 @@ class ForwardKinematics:
 
     @staticmethod
     def forward_kinematics_from_dh(dh_table):
-        T = sp.eye(4)
-        for (a, alpha, d, theta) in dh_table:
+        T = None
+        for (theta, d, a, alpha) in dh_table:
             A = DenavitHartenbergTransformMatrix.get_A_dh(theta, d, a, alpha)
-            T = T * A
+            if T is None:
+                T = A
+            else:
+                T = T * A
         return sp.simplify(T)
     
