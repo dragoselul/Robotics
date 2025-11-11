@@ -130,6 +130,8 @@ end
 
 
 %% Problem 6
+clear 
+clc
 
 % The trajectories at this problem simply approximates the joint angles,
 % rates and accelerations as a function of time by computing a series of
@@ -145,18 +147,40 @@ function matrix = coeffMatrix(n, tA, tB)
     % this considers the coeffs to be 1 for the angle approx polynomial and
     % cascaded down
 
-    row14 = [linspace(1, 1, n - 1), 1];
-    row25 = [polyder(row14), 0];
-    row36 = [polyder(polyder(row14)), 0,0];
+    if n == 8
 
-    row1 = computeNumVect(row14, tA);
-    row2 = computeNumVect(row25, tA); 
-    row3 = computeNumVect(row36, tA);
-    row4 = computeNumVect(row14, tB);
-    row5 = computeNumVect(row25, tB);
-    row6 = computeNumVect(row36, tB);
+        row15 = [linspace(1, 1, n)];
+        row26 = [polyder(row15), 0];
+        row37 = [polyder(polyder(row15)), 0,0];
+        row48 = [polyder(polyder(polyder(row15))), 0,0,0];
+    
+        row1 = computeNumVect(row15, tA);
+        row2 = computeNumVect(row26, tA); 
+        row3 = computeNumVect(row37, tA);
+        row4 = computeNumVect(row48, tA);
+        row5 = computeNumVect(row15, tB);
+        row6 = computeNumVect(row26, tB);
+        row7 = computeNumVect(row37, tB);
+        row8 = computeNumVect(row48, tB);
 
-    matrix = [row1; row2; row3; row4; row5; row6];
+        matrix = [row1; row2; row3; row4; row5; row6; row7; row8];
+
+    elseif n < 8
+        row14 = [linspace(1, 1, n)];
+        row25 = [polyder(row14), 0];
+        row36 = [polyder(polyder(row14)), 0,0];
+    
+        row1 = computeNumVect(row14, tA);
+        row2 = computeNumVect(row25, tA); 
+        row3 = computeNumVect(row36, tA);
+        row4 = computeNumVect(row14, tB);
+        row5 = computeNumVect(row25, tB);
+        row6 = computeNumVect(row36, tB);
+    
+        matrix = [row1; row2; row3; row4; row5; row6];
+     end
+
+    
 
 end
 
@@ -198,13 +222,21 @@ end
 % coeffMatrix(6, 0, 2)
 
 
+
 function coeffs = computeCoefficients(n, tA, tB, qa, qdot_a, qddot_a, qb, qdot_b, qddot_b)
 
     % solutions in 4xn format
 
     % q = [theta1, theta2, theta3, theta4]'
 
-    solution = [qa', qdot_a, qddot_a, qb', qdot_b, qddot_b];
+    % insert on more DOF for jerk = 0 so matrix can go up to 8 unknowns to
+    % solve for 8x8 matrix
+
+    if n == 8
+        solution = [qa', qdot_a, qddot_a, [0, 0, 0, 0]', qb', qdot_b, qddot_b, [0, 0, 0, 0]'];
+    elseif n < 8
+        solution = [qa', qdot_a, qddot_a, qb', qdot_b, qddot_b];
+    end
 
     % Compute matrix for this solution space between tA and tB
 
@@ -240,6 +272,10 @@ R = 32;
 angles = 0:2*pi/36:pi*2;
 circle_points = circleDrawer(circle_center, R, angles);
 
+% BEST RESULTS FOR EITHER 6 OR 8
+
+number_coefficients = 8; 
+
 % --- FIRST QUADRANT (t = 0-2s) -----
 
 qa = poses(pose_index(1), :);
@@ -267,7 +303,7 @@ qdot_b = double(pseudoinverse_J_B*vb);
 
 % Theta1 to Theta4 coefficients
 
-Acoeffs = computeCoefficients(5, tA, tB, qa, qdot_a, qddot_a, qb, qdot_b, qddot_b)
+Acoeffs = computeCoefficients(number_coefficients, tA, tB, qa, qdot_a, qddot_a, qb, qdot_b, qddot_b)
 
 % --- SECOND QUADRANT (t = 2-4s) -----
 
@@ -299,7 +335,7 @@ qdot_b = double(pseudoinverse_J_B*vb);
 
 % Theta1 to Theta4 coefficients
 
-Bcoeffs = computeCoefficients(5, tA, tB, qa, qdot_a, qddot_a, qb, qdot_b, qddot_b)
+Bcoeffs = computeCoefficients(number_coefficients, tA, tB, qa, qdot_a, qddot_a, qb, qdot_b, qddot_b)
 
 % --- THIRD QUADRANT (t = 4-6s) -----
 
@@ -331,7 +367,7 @@ qdot_b = double(pseudoinverse_J_B*vb);
 
 % Theta1 to Theta4 coefficients
 
-Ccoeffs = computeCoefficients(5, tA, tB, qa, qdot_a, qddot_a, qb, qdot_b, qddot_b)
+Ccoeffs = computeCoefficients(number_coefficients, tA, tB, qa, qdot_a, qddot_a, qb, qdot_b, qddot_b)
 
 
 % --- FOURTH QUADRANT (t = 6-8s) -----
@@ -364,7 +400,7 @@ qdot_b = double(pseudoinverse_J_B*vb);
 
 % Theta1 to Theta4 coefficients
 
-Dcoeffs = computeCoefficients(5, tA, tB, qa, qdot_a, qddot_a, qb, qdot_b, qddot_b)
+Dcoeffs = computeCoefficients(number_coefficients, tA, tB, qa, qdot_a, qddot_a, qb, qdot_b, qddot_b)
 
 
 %% Problem 7
@@ -464,14 +500,13 @@ for i = 1:4
     time_interval = time_interval + 2;
 end 
 
-% Generate ideal circular path
-angles = linspace(0, 2*pi, size(ee_positions, 1));
+% Compute the circle points
+
 circle_center = [150; 0; 120];
 R = 32;
-circle_path = circle_center + R * [zeros(size(angles));
-                                   cos(angles);
-                                   sin(angles)];
-circle_path = circle_path';
+angles = 0:2*pi/36:pi*2;
+circle_points = circleDrawer(circle_center, R, angles);
+circle_path = circle_points';
 
 
 % Plot comparison
@@ -483,3 +518,6 @@ xlabel('X'); ylabel('Y'); zlabel('Z');
 legend('Interpolated Path', 'Ideal Circular Path');
 title('End-Effector Trajectory vs. Ideal Circle');
 grid on; axis equal;
+
+%% Problem 7b - improvements
+

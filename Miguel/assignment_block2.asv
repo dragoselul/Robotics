@@ -130,6 +130,8 @@ end
 
 
 %% Problem 6
+clear 
+clc
 
 % The trajectories at this problem simply approximates the joint angles,
 % rates and accelerations as a function of time by computing a series of
@@ -145,13 +147,15 @@ function matrix = coeffMatrix(n, tA, tB)
     % this considers the coeffs to be 1 for the angle approx polynomial and
     % cascaded down
 
-    row14 = [linspace(1, 1, n - 1), 1];
-    row25 = [polyder(row14), 0];
-    row36 = [polyder(polyder(row14)), 0,0];
+    row15 = [linspace(1, 1, n)];
+    row26 = [polyder(row14), 0];
+    row37 = [polyder(polyder(row14)), 0,0];
+    row48 = [polyder(polyder(polyder(row14))), 0,0,0];
 
-    row1 = computeNumVect(row14, tA);
-    row2 = computeNumVect(row25, tA); 
-    row3 = computeNumVect(row36, tA);
+    row1 = computeNumVect(row15, tA);
+    row2 = computeNumVect(row26, tA); 
+    row3 = computeNumVect(row37, tA);
+    row4 = computeNumVect(row48, tA);
     row4 = computeNumVect(row14, tB);
     row5 = computeNumVect(row25, tB);
     row6 = computeNumVect(row36, tB);
@@ -198,13 +202,17 @@ end
 % coeffMatrix(6, 0, 2)
 
 
+
 function coeffs = computeCoefficients(n, tA, tB, qa, qdot_a, qddot_a, qb, qdot_b, qddot_b)
 
     % solutions in 4xn format
 
     % q = [theta1, theta2, theta3, theta4]'
 
-    solution = [qa', qdot_a, qddot_a, qb', qdot_b, qddot_b];
+    % insert on more DOF for jerk = 0 so matrix can go up to 8 unknowns to
+    % solve for 8x8 matrix
+
+    solution = [qa', qdot_a, qddot_a, [0, 0, 0, 0]', qb', qdot_b, qddot_b, [0, 0, 0, 0]'];
 
     % Compute matrix for this solution space between tA and tB
 
@@ -267,7 +275,7 @@ qdot_b = double(pseudoinverse_J_B*vb);
 
 % Theta1 to Theta4 coefficients
 
-Acoeffs = computeCoefficients(5, tA, tB, qa, qdot_a, qddot_a, qb, qdot_b, qddot_b)
+Acoeffs = computeCoefficients(8, tA, tB, qa, qdot_a, qddot_a, qb, qdot_b, qddot_b)
 
 % --- SECOND QUADRANT (t = 2-4s) -----
 
@@ -299,7 +307,7 @@ qdot_b = double(pseudoinverse_J_B*vb);
 
 % Theta1 to Theta4 coefficients
 
-Bcoeffs = computeCoefficients(5, tA, tB, qa, qdot_a, qddot_a, qb, qdot_b, qddot_b)
+Bcoeffs = computeCoefficients(8, tA, tB, qa, qdot_a, qddot_a, qb, qdot_b, qddot_b)
 
 % --- THIRD QUADRANT (t = 4-6s) -----
 
@@ -331,7 +339,7 @@ qdot_b = double(pseudoinverse_J_B*vb);
 
 % Theta1 to Theta4 coefficients
 
-Ccoeffs = computeCoefficients(5, tA, tB, qa, qdot_a, qddot_a, qb, qdot_b, qddot_b)
+Ccoeffs = computeCoefficients(8, tA, tB, qa, qdot_a, qddot_a, qb, qdot_b, qddot_b)
 
 
 % --- FOURTH QUADRANT (t = 6-8s) -----
@@ -364,7 +372,7 @@ qdot_b = double(pseudoinverse_J_B*vb);
 
 % Theta1 to Theta4 coefficients
 
-Dcoeffs = computeCoefficients(5, tA, tB, qa, qdot_a, qddot_a, qb, qdot_b, qddot_b)
+Dcoeffs = computeCoefficients(8, tA, tB, qa, qdot_a, qddot_a, qb, qdot_b, qddot_b)
 
 
 %% Problem 7
@@ -445,23 +453,43 @@ end
 
 circle_trajectory = zeros(3, number_points * 4);
 
-coefficients_matrices = [Acoeffs; Bcoeffs; Ccoeffs; Dcoeffs]; % 16 x 5 coeff matrix row 1-4 first quadrant row 5-8 second quadrant, etc
+coeffs_all = {Acoeffs, Bcoeffs, Ccoeffs, Dcoeffs};
 
 indexer = [0];
 
-for i = 1:4
+% where i defines the 4 quadrants of the circle 
+time_interval = [0, 2];
 
-    % where i defines the 4 quadrants of the circle 
-    time_interval = [0, 2];
+for i = 1:4
 
     % Keep track of the number of points to add to the list in batches of
     % number of points 
 
     indexer(end+1) = i * number_points; 
 
-    circle_trajectory(:, indexer(i) + 1 : indexer(i + 1)) = computePlot(time_interval(1), time_interval(2), coefficients_matrices(4 * i - 3:i*4, :), point_functionXYZ);
+    circle_trajectory(:, indexer(i) + 1 : indexer(i + 1)) = computePlot(time_interval(1), time_interval(2), coeffs_all{i}, point_functionXYZ);
 
     time_interval = time_interval + 2;
-
 end 
+
+% Compute the circle points
+
+circle_center = [150; 0; 120];
+R = 32;
+angles = 0:2*pi/36:pi*2;
+circle_points = circleDrawer(circle_center, R, angles);
+circle_path = circle_points';
+
+
+% Plot comparison
+figure;
+plot3(circle_trajectory(1, :), circle_trajectory(2, :), circle_trajectory(3, :), 'LineWidth', 1.8);
+hold on;
+plot3(circle_path(:,1), circle_path(:,2), circle_path(:,3), 'r--', 'LineWidth', 2);
+xlabel('X'); ylabel('Y'); zlabel('Z');
+legend('Interpolated Path', 'Ideal Circular Path');
+title('End-Effector Trajectory vs. Ideal Circle');
+grid on; axis equal;
+
+%% Problem 7b - improvements
 
