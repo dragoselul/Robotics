@@ -365,3 +365,121 @@ qdot_b = double(pseudoinverse_J_B*vb);
 % Theta1 to Theta4 coefficients
 
 Dcoeffs = computeCoefficients(5, tA, tB, qa, qdot_a, qddot_a, qb, qdot_b, qddot_b)
+
+
+%% Problem 7
+
+% RUN EXERCISE 6 BEFORE DOING 7!!!!!! DO NOT CLEAN THE OUTPUT
+
+% Essentially a time continuous function that takes my theta1(t) to theta4(t) and gives me a robot path. This can be achieved running the 
+% homogenous transformation matrix discretly from frame 0 until frame 4
+
+% Take these from problem 2
+
+% Variables
+
+syms theta1 theta2 theta3 theta4
+
+% Define full DH transforms
+
+T01 = DH(theta1, 50, 0, sym(pi/2));
+T12 = DH(theta2 + sym(pi/2), 0, 93, 0);
+T23 = DH(theta3, 0, 93, 0);
+T34 = DH(theta4, 0, 50, 0);
+T03 = simplify(T01 * T12 * T23);
+T04 = simplify(T01 * T12 * T23 * T34);
+
+% First, extract the function fx(theta1(t), theta2(t), theta3(t),
+% theta4(t)), fy and fz respectively for the point. This is essentially a
+% function of a function 
+
+point_functionXYZ = extractXYZ(T04); % point [x, y, z]' vector
+
+% Create a function that can loop through the point function between 2 time
+% intervals and a defined set of coefficients
+
+global number_points
+
+number_points = 40;
+
+function points = computePlot(tA, tB, coeff, point_functionXYZ)
+
+    syms theta1 theta2 theta3 theta4
+
+    global number_points
+
+    % tA - initial time
+    % tB - final time 
+    % coeff - coefficients matrix either A, B, C or D (gives coeffs to all the theta1(t) - theta4(t) expressions)
+
+    % Compute the numerical value of the vector components evaluated at a
+    % time t and then sum the elements to get the vector, numerical value
+
+    % Use a loop for that, then add all of them into a list of points [3, n]
+
+    % Define the number of time intervals t (number of points) 
+
+    points = zeros(3, number_points);
+
+    index = 1;
+
+    for t = linspace(tA, tB, number_points) % 40 points per interval
+      
+        theta1_t = sum(computeNumVect(coeff(1, :), t));
+        theta2_t = sum(computeNumVect(coeff(2, :), t));
+        theta3_t = sum(computeNumVect(coeff(3, :), t));
+        theta4_t = sum(computeNumVect(coeff(4, :), t));
+
+        % With the fed xyz function, subs the theta values by the computed
+        % thetas at that time interval for the X, Y and Z coordinates
+
+        points(:, index) = subs(point_functionXYZ, [theta1, theta2, theta3, theta4], [theta1_t, theta2_t, theta3_t, theta4_t]);
+
+        index = index + 1;
+             
+    end
+
+end 
+
+% Compute the trajectories for the circle 
+
+circle_trajectory = zeros(3, number_points * 4);
+
+coeffs_all = {Acoeffs, Bcoeffs, Ccoeffs, Dcoeffs};
+
+indexer = [0];
+
+% where i defines the 4 quadrants of the circle 
+time_interval = [0, 2];
+
+for i = 1:4
+
+    % Keep track of the number of points to add to the list in batches of
+    % number of points 
+
+    indexer(end+1) = i * number_points; 
+
+    circle_trajectory(:, indexer(i) + 1 : indexer(i + 1)) = computePlot(time_interval(1), time_interval(2), coeffs_all{i}, point_functionXYZ);
+
+    time_interval = time_interval + 2;
+end 
+
+% Generate ideal circular path
+angles = linspace(0, 2*pi, size(ee_positions, 1));
+circle_center = [150; 0; 120];
+R = 32;
+circle_path = circle_center + R * [zeros(size(angles));
+                                   cos(angles);
+                                   sin(angles)];
+circle_path = circle_path';
+
+
+% Plot comparison
+figure;
+plot3(circle_trajectory(1, :), circle_trajectory(2, :), circle_trajectory(3, :), 'LineWidth', 1.8);
+hold on;
+plot3(circle_path(:,1), circle_path(:,2), circle_path(:,3), 'r--', 'LineWidth', 2);
+xlabel('X'); ylabel('Y'); zlabel('Z');
+legend('Interpolated Path', 'Ideal Circular Path');
+title('End-Effector Trajectory vs. Ideal Circle');
+grid on; axis equal;
