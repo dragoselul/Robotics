@@ -366,5 +366,68 @@ qdot_b = double(pseudoinverse_J_B*vb);
 
 Dcoeffs = computeCoefficients(5, tA, tB, qa, qdot_a, qddot_a, qb, qdot_b, qddot_b)
 
+%% Problem 7
 
-% Exercise 7, try
+% Time resolution
+dt = 0.01;
+t_total = 0:0.01:8;
+q_total = [];
+
+% Segment time intervals
+segments = [0 2; 2 4; 4 6; 6 8];
+coeffs_all = {Acoeffs, Bcoeffs, Ccoeffs, Dcoeffs};
+
+% Evaluate joint angles over time
+for i = 1:4
+    tA = segments(i, 1);
+    tB = segments(i, 2);
+    t_segment = tA:dt:tB;
+    coeffs = coeffs_all{i};
+    n = size(coeffs, 2);
+    q_segment = zeros(length(t_segment), 4);
+
+    for j = 1:length(t_segment)
+        t = t_segment(j);
+        T = t.^(n-1:-1:0); % Polynomial basis
+        q_segment(j, :) = coeffs * T';
+    end
+
+    q_total = [q_total; q_segment];
+end
+
+% Compute end-effector positions using forward kinematics
+ee_positions = zeros(size(q_total, 1), 3);
+
+for i = 1:size(q_total, 1)
+    q = q_total(i, :);
+    
+    % Replace these with your actual DH parameters
+    T1 = DH(q(1), 50, 0, pi/2);
+    T2 = DH(q(2) + pi/2, 0, 93, 0);
+    T3 = DH(q(3), 0, 93, 0);
+    T4 = DH(q(4), 0, 50, 0);
+    
+    T = T1 * T2 * T3 * T4;
+    ee_positions(i, :) = extractXYZ(T)';
+end
+
+% Generate ideal circular path
+angles = linspace(0, 2*pi, size(ee_positions, 1));
+circle_center = [150; 0; 120];
+R = 32;
+circle_path = circle_center + R * [zeros(size(angles));
+                                   cos(angles);
+                                   sin(angles)];
+circle_path = circle_path';
+
+% Plot comparison
+figure;
+plot3(ee_positions(:,1), ee_positions(:,2), ee_positions(:,3), 'b', 'LineWidth', 2);
+hold on;
+plot3(circle_path(:,1), circle_path(:,2), circle_path(:,3), 'r--', 'LineWidth', 2);
+xlabel('X'); ylabel('Y'); zlabel('Z');
+legend('Interpolated Path', 'Ideal Circular Path');
+title('End-Effector Trajectory vs. Ideal Circle');
+grid on; axis equal;
+
+%% Problem 8
