@@ -365,3 +365,6 @@ qdot_b = double(pseudoinverse_J_B*vb);
 % Theta1 to Theta4 coefficients
 
 Dcoeffs = computeCoefficients(5, tA, tB, qa, qdot_a, qddot_a, qb, qdot_b, qddot_b)
+
+
+% Exercise 7, try
