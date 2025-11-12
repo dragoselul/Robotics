@@ -147,20 +147,40 @@ function matrix = coeffMatrix(n, tA, tB)
     % this considers the coeffs to be 1 for the angle approx polynomial and
     % cascaded down
 
-    row15 = [linspace(1, 1, n)];
-    row26 = [polyder(row14), 0];
-    row37 = [polyder(polyder(row14)), 0,0];
-    row48 = [polyder(polyder(polyder(row14))), 0,0,0];
+    if n == 8
 
-    row1 = computeNumVect(row15, tA);
-    row2 = computeNumVect(row26, tA); 
-    row3 = computeNumVect(row37, tA);
-    row4 = computeNumVect(row48, tA);
-    row4 = computeNumVect(row14, tB);
-    row5 = computeNumVect(row25, tB);
-    row6 = computeNumVect(row36, tB);
+        row15 = [linspace(1, 1, n)];
+        row26 = [polyder(row15), 0];
+        row37 = [polyder(polyder(row15)), 0,0];
+        row48 = [polyder(polyder(polyder(row15))), 0,0,0];
+    
+        row1 = computeNumVect(row15, tA);
+        row2 = computeNumVect(row26, tA); 
+        row3 = computeNumVect(row37, tA);
+        row4 = computeNumVect(row48, tA);
+        row5 = computeNumVect(row15, tB);
+        row6 = computeNumVect(row26, tB);
+        row7 = computeNumVect(row37, tB);
+        row8 = computeNumVect(row48, tB);
 
-    matrix = [row1; row2; row3; row4; row5; row6];
+        matrix = [row1; row2; row3; row4; row5; row6; row7; row8];
+
+    elseif n < 8
+        row14 = [linspace(1, 1, n)];
+        row25 = [polyder(row14), 0];
+        row36 = [polyder(polyder(row14)), 0,0];
+    
+        row1 = computeNumVect(row14, tA);
+        row2 = computeNumVect(row25, tA); 
+        row3 = computeNumVect(row36, tA);
+        row4 = computeNumVect(row14, tB);
+        row5 = computeNumVect(row25, tB);
+        row6 = computeNumVect(row36, tB);
+    
+        matrix = [row1; row2; row3; row4; row5; row6];
+     end
+
+    
 
 end
 
@@ -212,7 +232,11 @@ function coeffs = computeCoefficients(n, tA, tB, qa, qdot_a, qddot_a, qb, qdot_b
     % insert on more DOF for jerk = 0 so matrix can go up to 8 unknowns to
     % solve for 8x8 matrix
 
-    solution = [qa', qdot_a, qddot_a, [0, 0, 0, 0]', qb', qdot_b, qddot_b, [0, 0, 0, 0]'];
+    if n == 8
+        solution = [qa', qdot_a, qddot_a, [0, 0, 0, 0]', qb', qdot_b, qddot_b, [0, 0, 0, 0]'];
+    elseif n < 8
+        solution = [qa', qdot_a, qddot_a, qb', qdot_b, qddot_b];
+    end
 
     % Compute matrix for this solution space between tA and tB
 
@@ -248,6 +272,10 @@ R = 32;
 angles = 0:2*pi/36:pi*2;
 circle_points = circleDrawer(circle_center, R, angles);
 
+% BEST RESULTS FOR EITHER 6 OR 8
+
+number_coefficients = 8; 
+
 % --- FIRST QUADRANT (t = 0-2s) -----
 
 qa = poses(pose_index(1), :);
@@ -275,7 +303,7 @@ qdot_b = double(pseudoinverse_J_B*vb);
 
 % Theta1 to Theta4 coefficients
 
-Acoeffs = computeCoefficients(8, tA, tB, qa, qdot_a, qddot_a, qb, qdot_b, qddot_b)
+Acoeffs = computeCoefficients(number_coefficients, tA, tB, qa, qdot_a, qddot_a, qb, qdot_b, qddot_b)
 
 % --- SECOND QUADRANT (t = 2-4s) -----
 
@@ -307,7 +335,7 @@ qdot_b = double(pseudoinverse_J_B*vb);
 
 % Theta1 to Theta4 coefficients
 
-Bcoeffs = computeCoefficients(8, tA, tB, qa, qdot_a, qddot_a, qb, qdot_b, qddot_b)
+Bcoeffs = computeCoefficients(number_coefficients, tA, tB, qa, qdot_a, qddot_a, qb, qdot_b, qddot_b)
 
 % --- THIRD QUADRANT (t = 4-6s) -----
 
@@ -339,7 +367,7 @@ qdot_b = double(pseudoinverse_J_B*vb);
 
 % Theta1 to Theta4 coefficients
 
-Ccoeffs = computeCoefficients(8, tA, tB, qa, qdot_a, qddot_a, qb, qdot_b, qddot_b)
+Ccoeffs = computeCoefficients(number_coefficients, tA, tB, qa, qdot_a, qddot_a, qb, qdot_b, qddot_b)
 
 
 % --- FOURTH QUADRANT (t = 6-8s) -----
@@ -372,7 +400,7 @@ qdot_b = double(pseudoinverse_J_B*vb);
 
 % Theta1 to Theta4 coefficients
 
-Dcoeffs = computeCoefficients(8, tA, tB, qa, qdot_a, qddot_a, qb, qdot_b, qddot_b)
+Dcoeffs = computeCoefficients(number_coefficients, tA, tB, qa, qdot_a, qddot_a, qb, qdot_b, qddot_b)
 
 
 %% Problem 7
@@ -491,5 +519,113 @@ legend('Interpolated Path', 'Ideal Circular Path');
 title('End-Effector Trajectory vs. Ideal Circle');
 grid on; axis equal;
 
-%% Problem 7b - improvements
+%% Problem 8
 
+% RUN EXERCISE 6 BEFORE RUNNING THIS ONE!!!
+
+% Compute the circle points 36 points in total
+
+circle_center = [150; 0; 120];
+R = 32;
+angles = 0:2*pi/36:pi*2;
+circle_points = circleDrawer(circle_center, R, angles);
+circle_path = circle_points';
+
+% Load the jacobian for the matrix, variable called jacobian_sym (in terms of theta1-theta4)
+% Also load the poses to feed to the jacobian for every instant around the
+% ideal circle trajectory. The calculated trajectory (thetas) calculated in
+% ex 7 also have to be fed into the jacobian 
+
+load('jacobian_sym_circle')
+load('poses.mat')
+coeffs_all = {Acoeffs, Bcoeffs, Ccoeffs, Dcoeffs};
+pose_index = [1, 36/4 * 1 + 1, 36/4 * 2 + 1, 36/4 * 3 + 1]; % splits circle into 4 quadrants
+
+% Compute the jacobian and store its matrix cond in a list
+
+jacobian_ideal_cond = zeros(length(angles), 1);
+jacobian_trajectory_cond = zeros(length(angles), 1);
+
+trajectory_poses = zeros(length(angles), 4);
+
+function t_fit = computeTime(n_samples, t_interval)
+
+    % function takes a time interval and fits x time samples into the
+    % interval for use within the computed traj jacobian
+    % where t_interval is a vector
+    
+    t_fit = linspace(t_interval(1), t_interval(2), n_samples);
+
+end
+
+
+
+
+
+for i = 1:length(angles)
+
+    jacobian_ideal_cond(i) = cond(numericJacobian(jacobian_sym, poses(i, :)));
+
+    % Compute the thetas for the 4 quadrants given the trajectory
+    % interpolation (depends on quadrant)
+    % t has to be normalized between the different segments to be plugged
+    % into the function 
+
+    if i <= pose_index(2)
+        t = computeTime(10, [0, 2]);
+        coeff = coeffs_all{1};
+        theta1_t = sum(computeNumVect(coeff(1, :), t(counterA)));
+        theta2_t = sum(computeNumVect(coeff(2, :), t(counterA)));
+        theta3_t = sum(computeNumVect(coeff(3, :), t(counterA)));
+        theta4_t = sum(computeNumVect(coeff(4, :), t(counterA)));
+        counterA = counterA + 1;
+    elseif i <= pose_index(3)
+        t = computeTime(9, [2, 4]);
+        coeff = coeffs_all{2};
+        theta1_t = sum(computeNumVect(coeff(1, :), t(counterB)));
+        theta2_t = sum(computeNumVect(coeff(2, :), t(counterB)));
+        theta3_t = sum(computeNumVect(coeff(3, :), t(counterB)));
+        theta4_t = sum(computeNumVect(coeff(4, :), t(counterB)));
+        counterB = counterB + 1;
+    elseif i <= pose_index(4)
+        counterC = 1;
+        t = computeTime(9, [4, 6]);
+        coeff = coeffs_all{3};
+        theta1_t = sum(computeNumVect(coeff(1, :), t(counterC)));
+        theta2_t = sum(computeNumVect(coeff(2, :), t(counterC)));
+        theta3_t = sum(computeNumVect(coeff(3, :), t(counterC)));
+        theta4_t = sum(computeNumVect(coeff(4, :), t(counterC)));
+        counterC = counterC + 1;
+    else
+        counterD = 1;
+        t = computeTime(9, [6, 8]);
+        coeff = coeffs_all{4};
+        theta1_t = sum(computeNumVect(coeff(1, :), t(counterD)));
+        theta2_t = sum(computeNumVect(coeff(2, :), t(counterD)));
+        theta3_t = sum(computeNumVect(coeff(3, :), t(counterD)));
+        theta4_t = sum(computeNumVect(coeff(4, :), t(counterD)));
+        counterD = counterD + 1;
+    end
+
+    trajectory_poses(i, :) = [theta1_t, theta2_t, theta3_t, theta4_t];
+
+    jacobian_trajectory_cond(i) = cond(numericJacobian(jacobian_sym, trajectory_poses(i, :)));
+
+end
+
+figure;
+
+titles = {'\theta_1(t)', '\theta_2(t)', '\theta_3(t)', '\theta_4(t)'};
+
+for k = 1:4
+    subplot(2,2,k)
+    plot(angles, poses(:,k), 'LineWidth', 1.8); hold on
+    plot(angles, trajectory_poses(:,k), '--', 'LineWidth', 1.8);
+    grid on
+    xlabel('Angle along circle [rad]');
+    ylabel(['\theta_' num2str(k) ' [rad]']);
+    title(['Comparison of ' titles{k}]);
+    legend('Ideal (IK)', 'Interpolated (poly)');
+end
+
+sgtitle('Comparison of Joint Angles: Ideal vs Interpolated Trajectory');

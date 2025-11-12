@@ -493,30 +493,22 @@ function full_jacobian = computeJacobian()
 end
 
 
-function numeric_jacob = numericJacobian(jacobian, pose)
-
-    % calculation of the jacobian for a given pose (this holds for the
-    % instant of the pose). The jacobian changes with time, so it keeps
-    % being different depending on the pose.
-
-    syms theta1 theta2 theta3 theta4
-
-    numeric_jacob = (vpa(double(subs(jacobian, [theta1, theta2, theta3, theta4], [pose(1), pose(2), pose(3), pose(4)])), 4));
-
-end
-
 % Symbolic Jacobian expression
 
-jacobian = computeJacobian(); 
+jacobian_sym = computeJacobian(); 
+
+% Save the symbolic Jacobian expression for exercise 8
+
+save('jacobian_sym_circle', 'jacobian_sym')
 
 load('poses.mat')
 
 pose_index = [1, 36/4 * 1 + 1, 36/4 * 2 + 1, 36/4 * 3 + 1];
 
-jacobian_psi_0 = numericJacobian(jacobian, poses(pose_index(1), :));
-jacobian_psi_90 = numericJacobian(jacobian, poses(pose_index(2), :));
-jacobian_psi_180 = numericJacobian(jacobian, poses(pose_index(3), :));
-jacobian_psi_270 = numericJacobian(jacobian, poses(pose_index(4), :));
+jacobian_psi_0 = numericJacobian(jacobian_sym, poses(pose_index(1), :));
+jacobian_psi_90 = numericJacobian(jacobian_sym, poses(pose_index(2), :));
+jacobian_psi_180 = numericJacobian(jacobian_sym, poses(pose_index(3), :));
+jacobian_psi_270 = numericJacobian(jacobian_sym, poses(pose_index(4), :));
 
 save("pose_indexes", "pose_index")
 save("jacobian_psi_90", "jacobian_psi_90")

@@ -519,5 +519,146 @@ legend('Interpolated Path', 'Ideal Circular Path');
 title('End-Effector Trajectory vs. Ideal Circle');
 grid on; axis equal;
 
-%% Problem 7b - improvements
+%% Problem 8
+
+% RUN EXERCISE 6 BEFORE RUNNING THIS ONE!!!
+
+% Compute the circle points 36 points in total
+
+circle_center = [150; 0; 120];
+R = 32;
+angles = 0:2*pi/36:pi*2;
+circle_points = circleDrawer(circle_center, R, angles);
+circle_path = circle_points';
+
+% Load the jacobian for the matrix, variable called jacobian_sym (in terms of theta1-theta4)
+% Also load the poses to feed to the jacobian for every instant around the
+% ideal circle trajectory. The calculated trajectory (thetas) calculated in
+% ex 7 also have to be fed into the jacobian 
+
+load('jacobian_sym_circle')
+load('poses.mat')
+coeffs_all = {Acoeffs, Bcoeffs, Ccoeffs, Dcoeffs};
+pose_index = [1, 36/4 * 1 + 1, 36/4 * 2 + 1, 36/4 * 3 + 1]; % splits circle into 4 quadrants
+
+% Compute the jacobian and store its matrix cond in a list
+
+jacobian_ideal_cond = zeros(length(angles), 1);
+jacobian_trajectory_cond = zeros(length(angles), 1);
+
+trajectory_poses = zeros(length(angles), 4);
+
+function t_fit = computeTime(n_samples, t_interval)
+
+    % function takes a time interval and fits x time samples into the
+    % interval for use within the computed traj jacobian
+    % where t_interval is a vector
+    
+    t_fit = linspace(t_interval(1), t_interval(2), n_samples);
+
+end
+
+
+
+counterA = 1;
+counterB = 1;
+counterC = 1;
+counterD = 1;
+
+for i = 1:length(angles)
+
+    jacobian_ideal_cond(i) = cond(numericJacobian(jacobian_sym, poses(i, :)));
+
+    % Compute the thetas for the 4 quadrants given the trajectory
+    % interpolation (depends on quadrant)
+    % t has to be normalized between the different segments to be plugged
+    % into the function 
+
+    if i <= pose_index(2)
+        t = computeTime(10, [0, 2]);
+        coeff = coeffs_all{1};
+        theta1_t = sum(computeNumVect(coeff(1, :), t(counterA)));
+        theta2_t = sum(computeNumVect(coeff(2, :), t(counterA)));
+        theta3_t = sum(computeNumVect(coeff(3, :), t(counterA)));
+        theta4_t = sum(computeNumVect(coeff(4, :), t(counterA)));
+        counterA = counterA + 1;
+    elseif i <= pose_index(3)
+        t = computeTime(9, [2, 4]);
+        coeff = coeffs_all{2};
+        theta1_t = sum(computeNumVect(coeff(1, :), t(counterB)));
+        theta2_t = sum(computeNumVect(coeff(2, :), t(counterB)));
+        theta3_t = sum(computeNumVect(coeff(3, :), t(counterB)));
+        theta4_t = sum(computeNumVect(coeff(4, :), t(counterB)));
+        counterB = counterB + 1;
+    elseif i <= pose_index(4)
+        t = computeTime(9, [4, 6]);
+        coeff = coeffs_all{3};
+        theta1_t = sum(computeNumVect(coeff(1, :), t(counterC)));
+        theta2_t = sum(computeNumVect(coeff(2, :), t(counterC)));
+        theta3_t = sum(computeNumVect(coeff(3, :), t(counterC)));
+        theta4_t = sum(computeNumVect(coeff(4, :), t(counterC)));
+        counterC = counterC + 1;
+    else
+        t = computeTime(9, [6, 8]);
+        coeff = coeffs_all{4};
+        theta1_t = sum(computeNumVect(coeff(1, :), t(counterD)));
+        theta2_t = sum(computeNumVect(coeff(2, :), t(counterD)));
+        theta3_t = sum(computeNumVect(coeff(3, :), t(counterD)));
+        theta4_t = sum(computeNumVect(coeff(4, :), t(counterD)));
+        counterD = counterD + 1;
+    end
+
+    trajectory_poses(i, :) = [theta1_t, theta2_t, theta3_t, theta4_t];
+
+    jacobian_trajectory_cond(i) = cond(numericJacobian(jacobian_sym, trajectory_poses(i, :)));
+
+end
+
+% FIGURE 1 FOR THE COND OF THE EXERCISE
+
+figure;
+plot(angles, jacobian_ideal_cond, 'b-', 'LineWidth', 1.8); hold on;
+plot(angles, jacobian_trajectory_cond, 'r--', 'LineWidth', 1.8);
+grid on; box on;
+
+xlabel('Circle sweep angle \psi [rad]');
+ylabel('cond(J)');
+title('Jacobian Condition Number Along Circular Trajectory');
+
+legend({'Ideal trajectory (IK-based)', ...
+        'Interpolated trajectory (polynomial)'}, ...
+        'Location', 'best');
+
+xlim([min(angles) max(angles)]);
+set(gca, 'FontSize', 11, 'LineWidth', 1);
+
+% FIGURE 2 - VISUAL REP OF THE ACTUAL THETAS AND THE INTERPOLATED ONES
+
+figure;
+
+titles = {'\theta_1(t)', '\theta_2(t)', '\theta_3(t)', '\theta_4(t)'};
+
+for k = 1:4
+    subplot(2,2,k)
+    plot(angles, poses(:,k), 'LineWidth', 1.8); hold on
+    plot(angles, trajectory_poses(:,k), '--', 'LineWidth', 1.8);
+    grid on
+    xlabel('Angle along circle [rad]');
+    ylabel(['\theta_' num2str(k) ' [rad]']);
+    title(['Comparison of ' titles{k}]);
+    legend('Ideal (IK)', 'Interpolated (poly)');
+end
+
+sgtitle('Comparison of Joint Angles: Ideal vs Interpolated Trajectory');
+
+% Quick explanation on the singularity side. The closes the trajectory is
+% to the robot's base the smaller the condition (further away from
+% singularity). We can see that for a robot arm that cannot reach space
+% (say the point to reach is much farther than the robot arms lenghts) the
+% jacobian will hit a singularity, meaning it cannot reach that pose and
+% therefore its rank reduce and cond -> inf (det (0) condition). We see
+% that the upper point of the circle's trajectory at pi/2 radians the cond
+% hits its highest, meaning its the closest point to singularity. However
+% the base of the circle trajectory at 3pi/2 rads is closest and most
+% achievable to the robot config, thus furthest from singularity. 
 
