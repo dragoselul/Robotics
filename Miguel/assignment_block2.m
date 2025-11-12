@@ -1,16 +1,5 @@
 %% Functions
 
-function S = skew(v)
-    % Computes the skew-symmetric matrix of a 3D vector
-    % Input:  v = [vx; vy; vz]
-    % Output: S = [v]_x
-
-    S = [  0   -v(3)  v(2);
-          v(3)   0   -v(1);
-         -v(2)  v(1)   0 ];
-end
-
-
 function matrix = translationMatrix(x, y, z)
     % translationMatrix returns the homogeneous transformation matrix
     % for a translation along x, y, z axes.
@@ -661,4 +650,108 @@ sgtitle('Comparison of Joint Angles: Ideal vs Interpolated Trajectory');
 % hits its highest, meaning its the closest point to singularity. However
 % the base of the circle trajectory at 3pi/2 rads is closest and most
 % achievable to the robot config, thus furthest from singularity. 
+
+%% Problem 9
+
+% The force applied at the stylus tip is 1Nm = 1000Nmm in our case. The
+% moment seen at joint 4 is given by the force acting downwards in z always
+% so -Fz and the M applied at a distance 50mm from joint 4. M is given by r
+% x F (cross product) 
+
+% Need the jacobian for torque calcs = jacobian_sym
+
+load('jacobian_sym_circle')
+
+jacobian_T = jacobian_sym'; % transposed Jacobian
+
+% So put together the F and J^T vector and matrix to compute the torque
+
+function torques = computeTorques(fx, fy, fz, poses, jacobian_T)
+
+    % poses = theta1 - theta4 at a specific point of the trajectory
+    % only valid for stylus tip where forces are applied at a disctance to
+    % the last joint, inducing bending moments as well
+
+    % in this case the r vector perpendicular to axis of rotation is the
+    % unit x vector multiplied by the distance to the force 50
+
+    % Import the DH transform to extract the X vector (distance to force) to
+    % get momentum
+        
+    % Define full DH transforms
+    
+    T01 = DH(poses(1), 50, 0, sym(pi/2));
+    T12 = DH(poses(2) + sym(pi/2), 0, 93, 0);
+    T23 = DH(poses(3), 0, 93, 0);
+    T34 = DH(poses(4), 0, 50, 0);
+    T04 = T01 * T12 * T23 * T34;
+
+    x_axisT04 = T04(:, 1);
+
+    M = skew(x_axisT04.*50) * [fx; fy; fz];
+    disp(vpa(M, 4))
+
+    % jacobian_T = transposed symbolic jacobian
+    % force = force and BM acting in joint 4 depending on point of the
+    % circle trajectory
+
+    syms theta1 theta2 theta3 theta4
+
+    jacobian_numeric = double(subs(jacobian_T, [theta1, theta2, theta3, theta4], [poses(1), poses(2), poses(3), poses(4)]));
+
+    force = [fx, fy, fz, M']';
+
+    torques = jacobian_numeric * force;
+
+end
+
+
+% Now compute the torques at all 4 joints for each point of the trajectory,
+% save them into a list and then plot them
+
+% Compute the circle points 37 points in total
+
+circle_center = [150; 0; 120];
+R = 32;
+angles = 0:2*pi/36:pi*2;
+circle_points = circleDrawer(circle_center, R, angles);
+circle_path = circle_points';
+torques = zeros(length(angles), 4);
+
+% Inputs from problem
+load('poses.mat')
+fx = 0;
+fy = 0;
+fz = 1; % N
+
+% compute torques completes the force vector with the moments and
+% calculates torque directly
+
+for i = 1:length(angles)
+
+    torques(i, :) = computeTorques(fx, fy, fz, poses(i, :), jacobian_T);
+
+end
+
+figure;
+plot(angles, torques(:,1), 'LineWidth', 1.8); hold on;
+plot(angles, torques(:,2), 'LineWidth', 1.8);
+plot(angles, torques(:,3), 'LineWidth', 1.8);
+plot(angles, torques(:,4), 'LineWidth', 1.8);
+
+grid on; box on;
+
+xlabel('Circle sweep angle \psi [rad]');
+ylabel('Joint torque \tau_i [N·mm]');
+title('Joint Torques Required for Circular End-Effector Trajectory');
+legend({'\tau_1','\tau_2','\tau_3','\tau_4'}, 'Location','best');
+
+xlim([min(angles) max(angles)]);
+set(gca, 'FontSize', 11, 'LineWidth', 1);
+
+
+%% Problem 10
+
+% The CMs of the links are expressed relative to the frame locations of the
+% different links (links 2/3 having the same CM)
 
