@@ -97,7 +97,6 @@ function transformation = DH(theta, dz, dx, alpha)
     
     transformation = rotationZ(theta) * translationMatrix(0, 0, dz) * translationMatrix(dx, 0, 0) * rotationX(alpha);
 
-
 end
 
 function angle = cosTheorem(a, b, c)
@@ -117,6 +116,21 @@ function module = modulusVector(X)
 
 end
 
+function jacobian = Jvw(rotation_axis, end_effector, origin)
+
+    % function returns Jv1 Jw1 nx1 vector for a column of the Jacobian in
+    % terms of theta1 - theta4
+    % ONLY VALID FOR ROTATIONAL JOINTS
+
+    syms theta1 theta2 theta3 theta4
+
+    Jv = skew(rotation_axis) * (end_effector - origin);
+    Jw = rotation_axis;
+
+    jacobian = [Jv' , Jw']';
+    
+end 
+
 
 %% Problem 6
 clear 
@@ -126,55 +140,26 @@ clc
 % rates and accelerations as a function of time by computing a series of
 % coefficients
 
-function matrix = coeffMatrix(n, tA, tB)
+% Take these from problem 2
 
-    % where n is the number of columns of the matrix
-    % matrix ALWAYS has 6 rows (qa, qdot_a, qddot_a, qb, qdot_b, qddot_b)
-    % tA is the initial boundary condition at t0 
-    % tB is the final boundary condition at tfinal
+% Variables
 
-    % this considers the coeffs to be 1 for the angle approx polynomial and
-    % cascaded down
+syms theta1 theta2 theta3 theta4
 
-    if n == 8
+% Define full DH transforms
 
-        row15 = [linspace(1, 1, n)];
-        row26 = [polyder(row15), 0];
-        row37 = [polyder(polyder(row15)), 0,0];
-        row48 = [polyder(polyder(polyder(row15))), 0,0,0];
-    
-        row1 = computeNumVect(row15, tA);
-        row2 = computeNumVect(row26, tA); 
-        row3 = computeNumVect(row37, tA);
-        row4 = computeNumVect(row48, tA);
-        row5 = computeNumVect(row15, tB);
-        row6 = computeNumVect(row26, tB);
-        row7 = computeNumVect(row37, tB);
-        row8 = computeNumVect(row48, tB);
-
-        matrix = [row1; row2; row3; row4; row5; row6; row7; row8];
-
-    elseif n < 8
-        row14 = [linspace(1, 1, n)];
-        row25 = [polyder(row14), 0];
-        row36 = [polyder(polyder(row14)), 0,0];
-    
-        row1 = computeNumVect(row14, tA);
-        row2 = computeNumVect(row25, tA); 
-        row3 = computeNumVect(row36, tA);
-        row4 = computeNumVect(row14, tB);
-        row5 = computeNumVect(row25, tB);
-        row6 = computeNumVect(row36, tB);
-    
-        matrix = [row1; row2; row3; row4; row5; row6];
-     end
-
-    
-
-end
+T01 = DH(theta1, 50, 0, sym(pi/2));
+T12 = DH(theta2 + sym(pi/2), 0, 93, 0);
+T23 = DH(theta3, 0, 93, 0);
+T34 = DH(theta4, 0, 50, 0);
+T03 = simplify(T01 * T12 * T23);
+T04 = simplify(T01 * T12 * T23 * T34);
 
 
-function vector = computeNumVect(X, t)
+
+function vector = computeMatrixCoeff(X, t)
+
+    % ONLY VALID FOR BUILDING COEFF MATRIX
 
     % where X is a vector (row)
     % functions works out its polinomial evaluation like:
@@ -205,6 +190,54 @@ function vector = computeNumVect(X, t)
     vector = [vector, zeros(1, counter)];
 
 end
+
+function matrix = coeffMatrix(n, tA, tB)
+
+    % where n is the number of columns of the matrix
+    % matrix ALWAYS has 6 rows (qa, qdot_a, qddot_a, qb, qdot_b, qddot_b)
+    % tA is the initial boundary condition at t0 
+    % tB is the final boundary condition at tfinal
+
+    % this considers the coeffs to be 1 for the angle approx polynomial and
+    % cascaded down
+
+    if n == 8
+
+        row15 = [linspace(1, 1, n)];
+        row26 = [polyder(row15), 0];
+        row37 = [polyder(polyder(row15)), 0,0];
+        row48 = [polyder(polyder(polyder(row15))), 0,0,0];
+    
+        row1 = computeMatrixCoeff(row15, tA);
+        row2 = computeMatrixCoeff(row26, tA); 
+        row3 = computeMatrixCoeff(row37, tA);
+        row4 = computeMatrixCoeff(row48, tA);
+        row5 = computeMatrixCoeff(row15, tB);
+        row6 = computeMatrixCoeff(row26, tB);
+        row7 = computeMatrixCoeff(row37, tB);
+        row8 = computeMatrixCoeff(row48, tB);
+
+        matrix = [row1; row2; row3; row4; row5; row6; row7; row8];
+
+    elseif n < 8
+        row14 = [linspace(1, 1, n)];
+        row25 = [polyder(row14), 0];
+        row36 = [polyder(polyder(row14)), 0,0];
+    
+        row1 = computeMatrixCoeff(row14, tA);
+        row2 = computeMatrixCoeff(row25, tA); 
+        row3 = computeMatrixCoeff(row36, tA);
+        row4 = computeMatrixCoeff(row14, tB);
+        row5 = computeMatrixCoeff(row25, tB);
+        row6 = computeMatrixCoeff(row36, tB);
+    
+        matrix = [row1; row2; row3; row4; row5; row6];
+     end
+
+    
+
+end
+
 
 % Test
 
@@ -263,7 +296,7 @@ circle_points = circleDrawer(circle_center, R, angles);
 
 % BEST RESULTS FOR EITHER 6 OR 8
 
-number_coefficients = 8; 
+number_coefficients = 6; 
 
 % --- FIRST QUADRANT (t = 0-2s) -----
 
@@ -292,7 +325,7 @@ qdot_b = double(pseudoinverse_J_B*vb);
 
 % Theta1 to Theta4 coefficients
 
-Acoeffs = computeCoefficients(number_coefficients, tA, tB, qa, qdot_a, qddot_a, qb, qdot_b, qddot_b)
+Acoeffs = computeCoefficients(number_coefficients, tA, tB, qa, qdot_a, qddot_a, qb, qdot_b, qddot_b);
 
 % --- SECOND QUADRANT (t = 2-4s) -----
 
@@ -324,7 +357,7 @@ qdot_b = double(pseudoinverse_J_B*vb);
 
 % Theta1 to Theta4 coefficients
 
-Bcoeffs = computeCoefficients(number_coefficients, tA, tB, qa, qdot_a, qddot_a, qb, qdot_b, qddot_b)
+Bcoeffs = computeCoefficients(number_coefficients, tA, tB, qa, qdot_a, qddot_a, qb, qdot_b, qddot_b);
 
 % --- THIRD QUADRANT (t = 4-6s) -----
 
@@ -356,7 +389,7 @@ qdot_b = double(pseudoinverse_J_B*vb);
 
 % Theta1 to Theta4 coefficients
 
-Ccoeffs = computeCoefficients(number_coefficients, tA, tB, qa, qdot_a, qddot_a, qb, qdot_b, qddot_b)
+Ccoeffs = computeCoefficients(number_coefficients, tA, tB, qa, qdot_a, qddot_a, qb, qdot_b, qddot_b);
 
 
 % --- FOURTH QUADRANT (t = 6-8s) -----
@@ -389,7 +422,7 @@ qdot_b = double(pseudoinverse_J_B*vb);
 
 % Theta1 to Theta4 coefficients
 
-Dcoeffs = computeCoefficients(number_coefficients, tA, tB, qa, qdot_a, qddot_a, qb, qdot_b, qddot_b)
+Dcoeffs = computeCoefficients(number_coefficients, tA, tB, qa, qdot_a, qddot_a, qb, qdot_b, qddot_b);
 
 
 %% Problem 7
@@ -398,21 +431,6 @@ Dcoeffs = computeCoefficients(number_coefficients, tA, tB, qa, qdot_a, qddot_a, 
 
 % Essentially a time continuous function that takes my theta1(t) to theta4(t) and gives me a robot path. This can be achieved running the 
 % homogenous transformation matrix discretly from frame 0 until frame 4
-
-% Take these from problem 2
-
-% Variables
-
-syms theta1 theta2 theta3 theta4
-
-% Define full DH transforms
-
-T01 = DH(theta1, 50, 0, sym(pi/2));
-T12 = DH(theta2 + sym(pi/2), 0, 93, 0);
-T23 = DH(theta3, 0, 93, 0);
-T34 = DH(theta4, 0, 50, 0);
-T03 = simplify(T01 * T12 * T23);
-T04 = simplify(T01 * T12 * T23 * T34);
 
 % First, extract the function fx(theta1(t), theta2(t), theta3(t),
 % theta4(t)), fy and fz respectively for the point. This is essentially a
@@ -546,8 +564,6 @@ function t_fit = computeTime(n_samples, t_interval)
     t_fit = linspace(t_interval(1), t_interval(2), n_samples);
 
 end
-
-
 
 counterA = 1;
 counterB = 1;
@@ -689,7 +705,6 @@ function torques = computeTorques(fx, fy, fz, poses, jacobian_T)
     x_axisT04 = T04(:, 1);
 
     M = skew(x_axisT04.*50) * [fx; fy; fz];
-    disp(vpa(M, 4))
 
     % jacobian_T = transposed symbolic jacobian
     % force = force and BM acting in joint 4 depending on point of the
@@ -752,6 +767,67 @@ set(gca, 'FontSize', 11, 'LineWidth', 1);
 
 %% Problem 10
 
+% MODEL SOLVED IN SIMULINK! NUMERICAL LAGRANGIAN
+
 % The CMs of the links are expressed relative to the frame locations of the
 % different links (links 2/3 having the same CM)
+
+% So firstly, work out the moment of inertia Io common to all links, using
+% link1, its longitudinal dimension 50mm and the mass of 60g of the arm
+
+% Lets produce a system of equations as 2 sides of the box are unknown, in
+% my case these are a and c, where b = 50mm (changed variable a^2 = k1 and c^2 = k2)
+
+% From Ixx = 5k2 - Io = -12.5 * 10^3
+% From Izz = 5k1 - 1.2Io = -12.5 * 10^3
+% From Iyy = 5k1 + 5k2 - 0.9Io = 0
+
+% This generates the matrix 
+
+A = [0 5 -1; 5 0 -1.2; 5 5 -0.9];
+
+% Solving for [k1; k2; Io]
+
+solution = [-12.5*10^3; -12.5*10^3; 0];
+
+vector = A \ solution;
+
+a = sqrt(vector(1)); % in mm
+c = sqrt(vector(2)); % in mm
+I0 = vector(3);
+
+% Where D are the inertia matrices;
+
+D1 = [1 0 0; 0 0.4 0; 0 0 0.9] .* I0;
+D2 = [0.45 0 0; 0 1.4 0; 0 0 1.2] .* I0;
+D3 = D2;
+D4 = eye(3) .* 0.5 * I0;
+
+% The langrangian is done in terms of time, therefore the poses and the
+% pose derivatives calculated on exercise 6
+
+% KINETIC ENERGY CALCULATIONS
+
+% For these, we need:
+% 1. Jacobian evaluated at COM for each link - use modified DH
+% 2. Derivative in terms of time of the joint rates - theta1_dot(t),
+% theta2_dot(t) ... extracted from the coeffs A B C and D
+
+% The new jacobian matrix for each of the COM must be calculated
+
+
+% Lets calculate the kinetic energy with a function
+
+
+
+
+
+function L = computeLagrangian(K, P)
+
+    % where K = kinetic energy
+    % where P = potential energy
+
+    L = K - P;
+
+end 
 

@@ -128,6 +128,21 @@ function module = modulusVector(X)
 
 end
 
+function jacobian = Jvw(rotation_axis, end_effector, origin)
+
+    % function returns Jv1 Jw1 nx1 vector for a column of the Jacobian in
+    % terms of theta1 - theta4
+    % ONLY VALID FOR ROTATIONAL JOINTS
+
+    syms theta1 theta2 theta3 theta4
+
+    Jv = skew(rotation_axis) * (end_effector - origin);
+    Jw = rotation_axis;
+
+    jacobian = [Jv' , Jw']';
+    
+end 
+
 
 %% Problem 1 
 
@@ -432,21 +447,6 @@ clc
 
 % Essentially the jacobian links the linear and angular velocities of the
 % stylus tip to the velocities of the joint angles (its a diff eq)
-
-function jacobian = Jvw(rotation_axis, end_effector, origin)
-
-    % function returns Jv1 Jw1 nx1 vector for a column of the Jacobian in
-    % terms of theta1 - theta4
-    % ONLY VALID FOR ROTATIONAL JOINTS
-
-    syms theta1 theta2 theta3 theta4
-
-    Jv = skew(rotation_axis) * (end_effector - origin);
-    Jw = rotation_axis;
-
-    jacobian = [Jv' , Jw']';
-    
-end 
 
 function full_jacobian = computeJacobian()
 
