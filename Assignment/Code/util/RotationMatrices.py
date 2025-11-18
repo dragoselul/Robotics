@@ -1,6 +1,6 @@
 import sympy as sp
 
-from util.AlongAxis import AlongAxis
+from .AlongAxis import AlongAxis
 
 
 class RotationMatrix:
@@ -57,3 +57,5 @@ class RotationMatrices:
                 ])
             case _:
                 raise Exception('Invalid axis')
+
+
