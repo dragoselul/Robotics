@@ -157,12 +157,12 @@ def inverse_kinematics0_3(origin_3):
 Inverse kinematics for 4-DOF robot
 Compute inverse kinematics given desired end-effector pose
 """
-def inverse_kinematics4(X_desired, origin_desired):
+def inverse_kinematics4(X_desired, origin_desired, T03_func=None):
     """
     Compute inverse kinematics for 4-DOF robot.
 
     Args:
-        X_desired: desired x-axis vector of end-effector (3x1 numpy array)
+        X_desired: desired x-axis vector of end-effector (3x1 numpy array) the direction of which is the desired orientation
         origin_desired: desired origin point of end-effector (3x1 numpy array)
 
     Returns:
@@ -182,10 +182,15 @@ def inverse_kinematics4(X_desired, origin_desired):
     # Choose first branch (elbow up)
     t1, t2, t3 = sol03[0, 0], sol03[0, 1], sol03[0, 2]
 
-    T01 = DH(t1, 50, 0, np.pi/2)
-    T12 = DH(t2, 0, 93, 0)
-    T23 = DH(t3, 0, 93, 0)
-    T03_numeric_np = T01 @ T12 @ T23
+    # 3) Compute T03 numerically using numpy
+    if T03_func is not None:
+        T03_numeric = T03_func(t1, t2, t3)
+        T03_numeric_np = np.array(T03_numeric)
+    else:
+        T01 = DH(t1, 50, 0, np.pi/2)
+        T12 = DH(t2, 0, 93, 0)
+        T23 = DH(t3, 0, 93, 0)
+        T03_numeric_np = T01 @ T12 @ T23
 
     R03 = T03_numeric_np[0:3, 0:3]  # Extract 3x3 rotation matrix
 

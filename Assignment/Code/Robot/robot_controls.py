@@ -1,6 +1,6 @@
 from dynamixel_sdk import *
 
-from Assignment.Code.enums import *
+from enums import *
 
 
 class RobotControls:
@@ -75,21 +75,27 @@ class RobotControls:
             return False
         return True
 
-    def move(self, motor_id, goal_position, margin_of_error):
+    def set_goal_position(self, motor_id, goal_position):
+        """
+        Set the goal position for a motor without waiting.
+        """
         dxl_comm_result, dxl_error = self.packetHandler.write2ByteTxRx(self.portHandler, motor_id,
                                                                        RAMControlAddresses.GOAL_POSITION.value, goal_position)
         if dxl_comm_result != COMM_SUCCESS:
             print("%s" % self.packetHandler.getTxRxResult(dxl_comm_result))
         elif dxl_error != 0:
             print("%s" % self.packetHandler.getRxPacketError(dxl_error))
-        # while 1:
-        #     # Read present position
-        #     time.sleep(0.5)
-        #     position = self.read_current_position(motor_id)
-        #     print("[ID:%03d] GoalPos:%03d  PresPos:%03d" % (motor_id, goal_position, position))
-        #
-        #     if not (abs(goal_position - position) > margin_of_error):
-        #         break
+
+    def move(self, motor_id, goal_position, margin_of_error):
+        self.set_goal_position(motor_id, goal_position)
+        while 1:
+            # Read present position
+            # time.sleep(0.1) # Reduced sleep time
+            position = self.read_current_position(motor_id)
+            # print("[ID:%03d] GoalPos:%03d  PresPos:%03d" % (motor_id, goal_position, position))
+        
+            if not (abs(goal_position - position) > margin_of_error):
+                break
 
     def read_current_position(self, motor_id):
         dxl_present_position, dxl_comm_result, dxl_error = self.packetHandler.read2ByteTxRx(self.portHandler, motor_id,
