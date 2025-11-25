@@ -794,7 +794,7 @@ vector = A \ solution;
 
 a = sqrt(vector(1)); % in mm
 c = sqrt(vector(2)); % in mm
-I0 = vector(3);
+I0 = 5*10^-5;%vector(3);
 
 % Where D are the inertia matrices;
 
