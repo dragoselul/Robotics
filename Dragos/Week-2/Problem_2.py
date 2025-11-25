@@ -2,7 +2,7 @@ import os
 import sys
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
-import util
+from Assignment.Code import util
 import sympy as sp
 
 """
