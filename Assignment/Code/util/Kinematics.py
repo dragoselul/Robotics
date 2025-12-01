@@ -8,7 +8,7 @@ class DenavitHartenbergTransformMatrix:
 
         # ----- Classic DH single-step transform -----
     @staticmethod
-    def get_A_dh(theta = sp.symbols('theta'), d = sp.symbols('d'), a = sp.symbols('a'), alpha = sp.symbols('alpha')):
+    def DH(theta = sp.symbols('theta'), d = sp.symbols('d'), a = sp.symbols('a'), alpha = sp.symbols('alpha')) -> sp.Matrix:
         cos_alpha, sin_alpha = sp.cos(alpha), sp.sin(alpha)
         cos_theta, sin_theta = sp.cos(theta), sp.sin(theta)
         return sp.Matrix([
@@ -25,8 +25,10 @@ class ForwardKinematics:
     @staticmethod
     def forward_kinematics_from_dh(dh_table):
         T = sp.eye(4)
-        for (a, alpha, d, theta) in dh_table:
+        for (theta, d, a, alpha) in dh_table:
             A = DenavitHartenbergTransformMatrix.get_A_dh(theta, d, a, alpha)
+            A = sp.simplify(A)
             T = T * A
-        return sp.simplify(T)
+            T = sp.simplify(T)
+        return T
     
