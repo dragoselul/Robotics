@@ -1,0 +1,27 @@
+@startuml
+
+' Style configuration
+skinparam classAttributeIconSize 0
+skinparam monochrome true
+skinparam linetype ortho
+
+package "Computer Vision System" {
+
+    class RobotVision {
+        + kin : RobotKinematics
+        ' Intrinsic Parameters
+        + fx, fy : float
+        + cx, cy : float
+        ' Extrinsic Offsets
+        + R_cam_tool : matrix (3x3)
+        + p_cam_tool : vector (3x1)
+        __
+        + __init__(robot_formulas)
+        + set_calibration(fx, fy, cx, cy)
+        .. Core Logic ..
+        + pixel_to_ray_camera_frame(u, v) : vector
+        + get_key_position(u, v, q, z_height) : vector
+    }
+}
+
+@enduml

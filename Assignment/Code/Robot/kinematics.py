@@ -39,27 +39,72 @@ class RobotKinematics:
         Calculates T04 (Stylus) and T05 (Camera)
         Returns: (T04, T05) as 4x4 matrices
         """
+        # Unpack joint angles
+        offsets = self.home_angles 
+    
+        # 2. APPLY OFFSET
+        # We subtract the offset to get the 'kinematic angle'
+        # If q_raw is 2.6, q becomes 0.0 (which is straight up in the math)
+        q = np.array(q) - offsets
+        
+        # Unpack the adjusted angles
         q1, q2, q3, q4 = q
+        
+        # --- Pre-calculate Angle Sums (Using adjusted q) ---
+        q23 = q2 + q3
+        q234 = q2 + q3 + q4
+        
+        # Arguments for rotation
+        sum_all = q1 + q234       
+        diff_234_1 = q234 - q1    
 
-        # Precompute trig functions
-        c1, s1 = np.cos(q1), np.sin(q1)
-        c2, s2 = np.cos(q2), np.sin(q2)
-        c23 = np.cos(q2 + q3)
-        s23 = np.sin(q2 + q3)
-        c234 = np.cos(q2 + q3 + q4)
-        s234 = np.sin(q2 + q3 + q4)
 
-        # --- T04: Stylus Tip ---
-        r4 = self.a2 * c2 + self.a3 * c23 + self.a4 * c234
-        z4 = self.d1 + self.a2 * s2 + self.a3 * s23 + self.a4 * s234
+        # --- Pre-calculate Trig Functions ---
+        s2 = np.sin(q2)
+        c2 = np.cos(q2)
+        s23 = np.sin(q23)
+        c23 = np.cos(q23)
+        s234 = np.sin(q234)
+        c234 = np.cos(q234)
+
+        # --- Common Position Terms ---
+        planar_proj = 50 * s234 + 93 * s23 + 93 * s2
+        z_pos = 50 * c234 + 93 * c23 + 93 * c2 + 50
+
+        # ---------------------------------------------------------
+        # Matrix Construction
+        # ---------------------------------------------------------
+        
+        # Row 0
+        r00 = -np.sin(diff_234_1)/2 - np.sin(sum_all)/2
+        r01 = -np.cos(sum_all)/2 - np.cos(diff_234_1)/2
+        r02 = np.sin(q1)
+        r03 = -np.cos(q1) * planar_proj
+
+        # Row 1
+        r10 = np.cos(sum_all)/2 - np.cos(diff_234_1)/2
+        r11 = np.sin(diff_234_1)/2 - np.sin(sum_all)/2
+        r12 = -np.cos(q1)
+        r13 = -np.sin(q1) * planar_proj
+
+        # Row 2
+        r20 = c234
+        r21 = -s234
+        r22 = 0
+        r23 = z_pos
+
+        # Row 3
+        r30 = 0
+        r31 = 0
+        r32 = 0
+        r33 = 1
 
         T04 = np.array([
-            [c1 * c234, -c1 * s234, s1, c1 * r4],
-            [s1 * c234, -s1 * s234, -c1, s1 * r4],
-            [s234, c234, 0, z4],
-            [0, 0, 0, 1]
+            [r00, r01, r02, r03],
+            [r10, r11, r12, r13],
+            [r20, r21, r22, r23],
+            [r30, r31, r32, r33]
         ])
-
         # --- T05: Camera (Offset by d_cam along local x-axis of T04) ---
         # Camera is physically mounted on link 4
         # T05 = T04 * T_offset
@@ -78,73 +123,94 @@ class RobotKinematics:
     # ========================================================================
     # 3. INVERSE KINEMATICS (Problem 2 & 3)
     # ========================================================================
-    def inverse_kinematics1(self, target_pos, elbow_up=True):
+    def inverse_kinematics(self, target_pos, elbow_up=True):
         """
-        Standard geometric IK solution.
+        Calculates motor angles to reach target_pos (x, y, z).
+        
+        Logic:
+        1. Calculate standard IK for a "straight" robot (Math Space).
+        2. Add +2.6 rad to result to convert to "Dynamixel Space".
         """
         x, y, z = target_pos
 
-        # 1. Base Angle
+        # -----------------------------------------------------
+        # 1. Base Angle (q1)
+        # -----------------------------------------------------
+        # CRITICAL FIX:
+        # Your previous FK defined X = -cos(q1), meaning q1=0 was Backwards.
+        # But your workspace is Forwards (+X), and your motors can't reach q1=pi (330 deg).
+        # We now assume q1=0 is Forwards to match the physical hardware limits.
         q1 = np.arctan2(y, x)
 
-        # 2. Wrist Center Position (Standard positive radius)
+        # -----------------------------------------------------
+        # 2. Wrist Position (in the 2D plane)
+        # -----------------------------------------------------
+        # Horizontal distance to target
         r_target = np.sqrt(x**2 + y**2)
         
-        # IMPORTANT: Horizontal constraint -> wrist is BEHIND target
+        # Height relative to the shoulder (remove base d1)
+        z_local = z - self.d1
+
+        # We need to decide the approach angle (pitch).
+        # Assuming you want the gripper HORIZONTAL reaching OUTWARDS.
+        # This implies sum of angles (q2+q3+q4) = 90 deg (pi/2).
+        # In this config, the wrist is just 'a4' distance behind target.
         r_wrist = r_target - self.a4
-        z_wrist = z - self.d1
+        z_wrist = z_local
 
-        # Debug
-        # print(f"DEBUG: r_target={r_target:.4f}, r_wrist={r_wrist:.4f}, z_wrist={z_wrist:.4f}")
-
-        # 3. 2-Link Planar IK
-        numerator = (r_wrist**2 + z_wrist**2 - self.a2**2 - self.a3**2)
-        denominator = (2 * self.a2 * self.a3)
+        # -----------------------------------------------------
+        # 3. 2-Link Planar IK (Shoulder q2, Elbow q3)
+        # -----------------------------------------------------
+        # Distance from shoulder to wrist center
+        D_sq = r_wrist**2 + z_wrist**2
         
-        # Safety check for divide by zero
-        if abs(denominator) < 1e-6:
-            return None
-            
+        # Law of Cosines for Elbow (q3)
+        # c3 = (D^2 - a2^2 - a3^2) / (2 * a2 * a3)
+        numerator = (D_sq - self.a2**2 - self.a3**2)
+        denominator = (2 * self.a2 * self.a3)
         cos_q3 = numerator / denominator
 
-        if abs(cos_q3) > 1.0:
-            if self.verbose:
-                print(f"⚠ Target unreachable: {target_pos} (Reach: {np.sqrt(r_wrist**2 + z_wrist**2):.3f} > Max: {self.a2+self.a3:.3f})")
-            return None
-
+        # Safety: Clamp to [-1, 1] to avoid math domain errors
+        if cos_q3 > 1.0: cos_q3 = 1.0
+        elif cos_q3 < -1.0: cos_q3 = -1.0
+        
         if elbow_up:
-            q3 = np.arccos(cos_q3)
+            q3 = -np.arccos(cos_q3) # Usually negative for "Elbow Up" in this frame
         else:
-            q3 = -np.arccos(cos_q3)
+            q3 = np.arccos(cos_q3)
 
-        # Calculate q2
+        # Calculate Shoulder (q2)
+        # Angle to wrist vector
+        alpha = np.arctan2(z_wrist, r_wrist)
+        # Angle offset due to elbow bend (Law of Cosines / Trig)
+        # beta = atan2( a3*sin(q3), a2 + a3*cos(q3) )
         k1 = self.a2 + self.a3 * np.cos(q3)
         k2 = self.a3 * np.sin(q3)
-        q2 = np.arctan2(z_wrist, r_wrist) - np.arctan2(k2, k1)
-
-        # 4. Orientation (Standard Horizontal Constraint: q2+q3+q4 = 0)
-        q4 = -(q2 + q3)
+        beta = np.arctan2(k2, k1)
         
-        # OR Vertical Constraint (if you switched to that): 
-        # q4 = -np.pi/2 - (q2 + q3)
+        q2 = alpha - beta
 
-        # 5. Wrap angles to be closest to Home (The correct fix for 150deg home)
-        # Helper function
-        def wrap_to_home(angle, home_angle):
-            candidates = [angle, angle + 2*np.pi, angle - 2*np.pi]
-            return min(candidates, key=lambda a: abs(a - home_angle))
+        # -----------------------------------------------------
+        # 4. Wrist Orientation (q4)
+        # -----------------------------------------------------
+        # We want global pitch = pi/2 (Horizontal forward)
+        # q2 + q3 + q4 = pi/2
+        # So:
+        q4 = (np.pi / 2) - (q2 + q3)
+
+        # -----------------------------------------------------
+        # 5. CONVERT TO MOTOR SPACE
+        # -----------------------------------------------------
+        # We calculated the angles assuming 0 is straight.
+        # But your motors think 2.6 is straight.
+        # So we ADD the offset.
         
-        # Apply wrapping
-        q1 = wrap_to_home(q1, self.home_angles[0])
-        q2 = wrap_to_home(q2, self.home_angles[1])
-        q3 = wrap_to_home(q3, self.home_angles[2])
-        q4 = wrap_to_home(q4, self.home_angles[3])
+        q_math = np.array([q1, q2, q3, q4])
+        q_motors = q_math + self.home_angles
 
-        q = np.array([q1, q2, q3, q4])
+        return q_motors
 
-        return q
-
-    def inverse_kinematics(self, target_pos, elbow_up=True):
+    def inverse_kinematics1(self, target_pos, elbow_up=True):
         """
         Geometric IK with BACKWARDS REACH support.
         Matches robots where Home is ~150 degrees (reaching 'backwards').

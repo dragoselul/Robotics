@@ -37,8 +37,8 @@ class RobotKinematicsController:
         self.mock = mock
 
         # Initialize Math Engine
-        self.current_joint_angles = [2.61799, 2.61799, 2.61799, 1]  # [q1, q2, q3, q4] in radians
-        self.home_angles = [2.61799, 2.61799, 2.61799, 1]  
+        self.current_joint_angles = [2.61799, 2.61799, 2.61799, 2.61799]  # [q1, q2, q3, q4] in radians
+        self.home_angles = [2.61799, 2.61799, 2.61799, 2.61799]  
         self.kin = RobotKinematics(home_angles=self.home_angles, verbose=verbose)
         self.vision = RobotVision(self.kin)
 
@@ -228,6 +228,7 @@ class RobotKinematicsController:
         # 1. Convert Radians -> Motor Units
         motor_positions = self.angles_to_motor_positions(joint_angles)
         if self.verbose:
+            print(f"Converted Joint Angles to WORLD Positions: {self.transform_robot_to_world(self.transform_world_to_robot(self.kin.forward_kinematics(joint_angles)[0][:3,3]))}")
             print(f"Moving to motor positions: {motor_positions}")
         self.robot.set_move_speed([1, 2, 3, 4], speed=150)  # Set a reasonable speed
         
@@ -318,6 +319,7 @@ class RobotKinematicsController:
         if use_world_coords:
             robot_coords = self.transform_world_to_robot([x, y, z])
             x, y, z = robot_coords
+            print(f"Transformed World to Robot Coords: ({x:.3f}, {y:.3f}, {z:.3f})")
         
         target = [x, y, z]
         q_target = self.kin.inverse_kinematics(target)
@@ -378,6 +380,7 @@ class RobotKinematicsController:
         """Returns current (x, y, z) of end effector in robot base frame."""
         self.update_current_state()  # Get fresh data
         T04, _ = self.kin.forward_kinematics(self.current_joint_angles)
+        print(f"End Effector Pose (Robot Frame): {T04[:3, 3]}")
         return T04[:3, 3]
 
     def get_end_effector_world_pose(self):
