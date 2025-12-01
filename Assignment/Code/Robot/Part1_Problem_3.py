@@ -21,8 +21,8 @@ class MockRobot:
     def close(self): pass
 
 
-import Robot.kinematics
-from Robot.robot_controller import RobotKinematicsController
+import kinematics
+from robot_controller import RobotKinematicsController
 
 
 def get_joint_positions_for_plotting(kin, q):

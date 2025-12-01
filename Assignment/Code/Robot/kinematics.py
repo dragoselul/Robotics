@@ -7,6 +7,7 @@
 """
 
 import numpy as np
+import transfomations
 
 
 class RobotKinematics:
@@ -29,6 +30,7 @@ class RobotKinematics:
             (-2 * np.pi / 3, 2 * np.pi / 3),  # q3: Elbow
             (-np.pi / 2, np.pi / 2)  # q4: Wrist
         ]
+        
 
     # ========================================================================
     # 2. FORWARD KINEMATICS (Problem 1)
@@ -41,33 +43,7 @@ class RobotKinematics:
         """
         q1, q2, q3, q4 = q
 
-        # Precompute trig functions
-        c1, s1 = np.cos(q1), np.sin(q1)
-        c2, s2 = np.cos(q2), np.sin(q2)
-        c23 = np.cos(q2 + q3)
-        s23 = np.sin(q2 + q3)
-        c234 = np.cos(q2 + q3 + q4)
-        s234 = np.sin(q2 + q3 + q4)
-
-        # --- T04: Stylus Tip ---
-        r4 = self.a2 * c2 + self.a3 * c23 + self.a4 * c234
-        z4 = self.d1 + self.a2 * s2 + self.a3 * s23 + self.a4 * s234
-
-        T04 = np.array([
-            [c1 * c234, -c1 * s234, s1, c1 * r4],
-            [s1 * c234, -s1 * s234, -c1, s1 * r4],
-            [s234, c234, 0, z4],
-            [0, 0, 0, 1]
-        ])
-
-        # --- T05: Camera (Offset by d_cam along local x-axis of T04) ---
-        # Camera is physically mounted on link 4
-        # T05 = T04 * T_offset
-        # T_offset = Translation(x=d_cam)
-
-        p_cam = T04 @ np.array([self.d_cam, 0, 0, 1])
-        T05 = T04.copy()
-        T05[:3, 3] = p_cam[:3]
+        T01, T02, T03, T04, T05= transfomations.transformation(q1, q2, q3, q4)
 
         return T04, T05
 
@@ -78,141 +54,18 @@ class RobotKinematics:
     # ========================================================================
     # 3. INVERSE KINEMATICS (Problem 2 & 3)
     # ========================================================================
-    def inverse_kinematics1(self, target_pos, elbow_up=True):
+    def inverse_kinematics(self, target_pos, orientation):
         """
+        ALWAYS ELBOW UP - hardcoded inside the transformations script
         Standard geometric IK solution.
+        Orientation: unit vector 1x3 that gives me the stylus pointing direction
+        Self has information about the geomtry of the robot
+        transformations script models all the kinematics of the robot
         """
-        x, y, z = target_pos
-
-        # 1. Base Angle
-        q1 = np.arctan2(y, x)
-
-        # 2. Wrist Center Position (Standard positive radius)
-        r_target = np.sqrt(x**2 + y**2)
         
-        # IMPORTANT: Horizontal constraint -> wrist is BEHIND target
-        r_wrist = r_target - self.a4
-        z_wrist = z - self.d1
-
-        # Debug
-        # print(f"DEBUG: r_target={r_target:.4f}, r_wrist={r_wrist:.4f}, z_wrist={z_wrist:.4f}")
-
-        # 3. 2-Link Planar IK
-        numerator = (r_wrist**2 + z_wrist**2 - self.a2**2 - self.a3**2)
-        denominator = (2 * self.a2 * self.a3)
-        
-        # Safety check for divide by zero
-        if abs(denominator) < 1e-6:
-            return None
-            
-        cos_q3 = numerator / denominator
-
-        if abs(cos_q3) > 1.0:
-            if self.verbose:
-                print(f"⚠ Target unreachable: {target_pos} (Reach: {np.sqrt(r_wrist**2 + z_wrist**2):.3f} > Max: {self.a2+self.a3:.3f})")
-            return None
-
-        if elbow_up:
-            q3 = np.arccos(cos_q3)
-        else:
-            q3 = -np.arccos(cos_q3)
-
-        # Calculate q2
-        k1 = self.a2 + self.a3 * np.cos(q3)
-        k2 = self.a3 * np.sin(q3)
-        q2 = np.arctan2(z_wrist, r_wrist) - np.arctan2(k2, k1)
-
-        # 4. Orientation (Standard Horizontal Constraint: q2+q3+q4 = 0)
-        q4 = -(q2 + q3)
-        
-        # OR Vertical Constraint (if you switched to that): 
-        # q4 = -np.pi/2 - (q2 + q3)
-
-        # 5. Wrap angles to be closest to Home (The correct fix for 150deg home)
-        # Helper function
-        def wrap_to_home(angle, home_angle):
-            candidates = [angle, angle + 2*np.pi, angle - 2*np.pi]
-            return min(candidates, key=lambda a: abs(a - home_angle))
-        
-        # Apply wrapping
-        q1 = wrap_to_home(q1, self.home_angles[0])
-        q2 = wrap_to_home(q2, self.home_angles[1])
-        q3 = wrap_to_home(q3, self.home_angles[2])
-        q4 = wrap_to_home(q4, self.home_angles[3])
-
-        q = np.array([q1, q2, q3, q4])
+        q = transfomations.IK4(target_pos, orientation)
 
         return q
-
-    def inverse_kinematics(self, target_pos, elbow_up=True):
-        """
-        Geometric IK with BACKWARDS REACH support.
-        Matches robots where Home is ~150 degrees (reaching 'backwards').
-        """
-        x, y, z = target_pos
-
-        # --- FORCE BACKWARDS REACH (The Fix) ---
-        # Standard IK assumes reaching forward (positive radius).
-        # Your robot is at 150deg, meaning it reaches "backwards" (negative radius).
-        
-        # 1. Flip Base Angle 180 degrees
-        q1 = np.arctan2(y, x) + np.pi 
-        
-        # 2. Use Negative Radius for calculations
-        r_target = -np.sqrt(x**2 + y**2)
-
-        # ---------------------------------------
-
-        # 3. Wrist Center Position
-        r_wrist = r_target - self.a4
-        z_wrist = z - self.d1
-
-        print(f"  DEBUG: r_target={r_target:.4f}, r_wrist={r_wrist:.4f}, z_wrist={z_wrist:.4f}")
-        print(f"  DEBUG: Link lengths: a2={self.a2}, a3={self.a3}, a4={self.a4}, d1={self.d1}")
-
-        # 4. 2-Link Planar IK (Shoulder & Elbow)
-        # Note: r_wrist is negative, but squaring it in Law of Cosines makes it positive
-        # 3. 2-Link Planar IK
-        numerator = (r_wrist**2 + z_wrist**2 - self.a2**2 - self.a3**2)
-        denominator = (2 * self.a2 * self.a3)
-        cos_q3 = numerator / denominator
-        print(f"  DEBUG: numerator={numerator:.6f}, denominator={denominator:.6f}")
-        print(f"  DEBUG: cos_q3={cos_q3:.6f} (must be in [-1, 1])")
-        if abs(cos_q3) > 1.0:
-            if self.verbose:
-                print(f"⚠ Target unreachable: {target_pos}")
-            return None
-
-        if elbow_up:
-            q3 = np.arccos(cos_q3)
-        else:
-            q3 = -np.arccos(cos_q3)
-
-        # 5. Calculate q2 
-        # arctan2(z, r) handles the negative radius correctly here!
-        k1 = self.a2 + self.a3 * np.cos(q3)
-        k2 = self.a3 * np.sin(q3)
-        q2 = np.arctan2(z_wrist, r_wrist) - np.arctan2(k2, k1)
-
-        # 6. Orientation
-        q4 = -np.pi/2 - (q2 + q3)
-
-        # 7. Standard Wrapping (0 to 360)
-        q = np.array([q1, q2, q3, q4])
-        
-        # Simple modulo to keep it clean [0, 2pi]
-        q = np.mod(q, 2 * np.pi)
-
-        if self.verbose:
-            print(f"  Target: {target_pos}")
-            print(f"  IK Angles (deg): {np.degrees(q)}")
-
-        return q
-
-
-
-
-
 
     # ========================================================================
     # 4. JACOBIAN
@@ -378,24 +231,24 @@ class RobotKinematics:
 # EXAMPLE USAGE (Template Method Pattern)
 # ============================================================================
 
-if __name__ == "__main__":
-    robot = RobotKinematics()
+# if __name__ == "__main__":
+#     robot = RobotKinematics()
 
-    # 1. Define Task (e.g., Circle Point)
-    target = [0.150, 0.0, 0.120]  # x, y, z
+#     # 1. Define Task (e.g., Circle Point)
+#     target = [0.150, 0.0, 0.120]  # x, y, z
 
-    # 2. Calculate IK
-    q = robot.inverse_kinematics(target)
-    print(f"Joint Angles: {np.degrees(q)}")
+#     # 2. Calculate IK
+#     q = robot.inverse_kinematics(target)
+#     print(f"Joint Angles: {np.degrees(q)}")
 
-    # 3. Verify with FK
-    T04, _ = robot.forward_kinematics(q)
-    print(f"FK Position: {T04[:3, 3]}")
+#     # 3. Verify with FK
+#     T04, _ = robot.forward_kinematics(q)
+#     print(f"FK Position: {T04[:3, 3]}")
 
-    # 4. Calculate Jacobian
-    J = robot.compute_jacobian(q)
-    print(f"Jacobian Condition: {np.linalg.cond(J)}")
+#     # 4. Calculate Jacobian
+#     J = robot.compute_jacobian(q)
+#     print(f"Jacobian Condition: {np.linalg.cond(J)}")
 
-    # 5. Calculate Required Torques for 1N Load
-    tau = robot.compute_static_torques(q)
-    print(f"Static Torques: {tau}")
+#     # 5. Calculate Required Torques for 1N Load
+#     tau = robot.compute_static_torques(q)
+#     print(f"Static Torques: {tau}")

@@ -726,8 +726,8 @@ end
 
 % Compute the circle points 37 points in total
 
-circle_center = [150; 0; 120];
-R = 32;
+circle_center = [150; 0; 120]*10^-3;
+R = 32*10^-3;
 angles = 0:2*pi/36:pi*2;
 circle_points = circleDrawer(circle_center, R, angles);
 circle_path = circle_points';
@@ -737,7 +737,7 @@ torques = zeros(length(angles), 4);
 load('poses.mat')
 fx = 0;
 fy = 0;
-fz = 1; % N
+fz = -1; % N
 
 % compute torques completes the force vector with the moments and
 % calculates torque directly

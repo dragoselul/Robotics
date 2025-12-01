@@ -262,6 +262,14 @@ function point03 = translationPoint34(X, O)
 end
 
 
+function transformation = Check2(T, theta_1, theta_2)
+
+    syms theta1 theta2 theta3
+
+    transformation = vpa(subs(T, [theta1, theta2], [theta_1, theta_2]), 4);
+
+end
+
 function transformation = Check3(T, theta_1, theta_2, theta_3)
 
     syms theta1 theta2 theta3
@@ -321,6 +329,7 @@ function angles = IK4(X_des, O_des, T03sym)
 end
 
 
+check = IK03([100; 0; 125]);
 
 sols = IK4([1; 0; 0], [182; 0; 125], T03)
 Check4(T04, sols(1, 1), sols(1, 2), sols(1, 3), sols(1, 4));
@@ -486,7 +495,7 @@ function full_jacobian = computeJacobian()
 
     for i = 1:4
 
-        full_jacobian(:, i) = Jvw(z(:, i), o0stylus, o(:, i));
+        full_jacobian(:, i) = Jvw(z(1, i), o0stylus, o(1, i));
 
     end
 
@@ -598,4 +607,3 @@ qd = qd_prim + Nv * corr;
 
 % For this case it does not, as Jwz + NullP matrix = 0. No authority to
 % change wz without changing the original angular positions (which we dont want as this would lock us out the circle)
-

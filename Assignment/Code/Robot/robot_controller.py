@@ -5,17 +5,16 @@ High-level controller that bridges mathematical formulas with your Robot hardwar
 
 import numpy as np
 import time
-import sys
-import os
 
-# Add parent directory to path for imports
-current_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.dirname(current_dir + "..")
-sys.path.append(parent_dir)
-
-from kinematics import RobotKinematics
-from translation import rad_to_motor_units, motor_units_to_rad
-from robot_vision import RobotVision
+# Support both package and direct script execution
+try:
+    from .kinematics import RobotKinematics
+    from .translation import rad_to_motor_units, motor_units_to_rad
+    from .robot_vision import RobotVision
+except ImportError:  # fallback when run as a standalone script
+    from kinematics import RobotKinematics
+    from translation import rad_to_motor_units, motor_units_to_rad
+    from robot_vision import RobotVision
 
 
 class RobotKinematicsController:
@@ -25,7 +24,7 @@ class RobotKinematicsController:
     - Uses Robot class for hardware communication.
     """
 
-    def __init__(self, robot, verbose=False, mock=False):
+    def __init__(self, robot, verbose=False, mock=True):
         """
         Args:
             robot: Instance of your Robot class
@@ -86,42 +85,6 @@ class RobotKinematicsController:
     # ========================================================================
     # COORDINATE SYSTEM & CALIBRATION
     # ========================================================================
-
-    def set_robot_base_position(self, x, y, z):
-        """
-        Set where the robot base is located in world coordinates.
-        
-        Args:
-            x, y, z: Position of robot base in world frame (meters)
-        """
-        self.robot_base_in_world = np.array([x, y, z])
-        print(f"Robot base set to world position: {self.robot_base_in_world}")
-
-    def transform_world_to_robot(self, world_point):
-        """
-        Convert a point in world coordinates to robot base coordinates.
-        
-        Args:
-            world_point: [x, y, z] in world frame
-        
-        Returns:
-            [x, y, z] in robot base frame
-        """
-        robot_frame = np.array(world_point) - self.robot_base_in_world
-        return robot_frame.tolist()
-
-    def transform_robot_to_world(self, robot_point):
-        """
-        Convert a point in robot base coordinates to world coordinates.
-        
-        Args:
-            robot_point: [x, y, z] in robot base frame
-        
-        Returns:
-            [x, y, z] in world frame
-        """
-        world_frame = np.array(robot_point) + self.robot_base_in_world
-        return world_frame.tolist()
 
     def calibrate_workspace(self):
         """
@@ -257,7 +220,7 @@ class RobotKinematicsController:
         target = [x, y, z]
 
         # 1. Calculate IK
-        q = self.kin.inverse_kinematics(target, elbow_up)
+        q = self.kin.inverse_kinematics(target)
         if q is None:
             print(f"⚠ IK failed for target {target}")
             return False
@@ -314,13 +277,9 @@ class RobotKinematicsController:
             duration: Movement time (seconds)
             use_world_coords: If True, x/y/z are in world frame; if False, robot base frame
         """
-        # Transform if needed
-        if use_world_coords:
-            robot_coords = self.transform_world_to_robot([x, y, z])
-            x, y, z = robot_coords
         
         target = [x, y, z]
-        q_target = self.kin.inverse_kinematics(target)
+        q_target = self.kin.inverse_kinematics(target, orientation=)
 
         if q_target is None:
             print(f"⚠ Target {target} unreachable!")
@@ -373,17 +332,6 @@ class RobotKinematicsController:
         # 2. Convert to radians
         self.current_joint_angles = self.motor_units_to_angles(positions_dict)
         return self.current_joint_angles
-
-    def get_end_effector_pose(self):
-        """Returns current (x, y, z) of end effector in robot base frame."""
-        self.update_current_state()  # Get fresh data
-        T04, _ = self.kin.forward_kinematics(self.current_joint_angles)
-        return T04[:3, 3]
-
-    def get_end_effector_world_pose(self):
-        """Returns current (x, y, z) of end effector in world frame."""
-        robot_pose = self.get_end_effector_pose()
-        return self.transform_robot_to_world(robot_pose)
 
     # ========================================================================
     # HELPERS: CONVERSION

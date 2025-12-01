@@ -1,15 +1,24 @@
-from dynamixel_sdk import *
+import time
+
+try:
+    from dynamixel_sdk import *  # type: ignore
+    DYNAMIXEL_AVAILABLE = True
+except ImportError:
+    # The SDK isn't installed (e.g., when running in mock mode).
+    DYNAMIXEL_AVAILABLE = False
 
 from enums import *
 
 
 class RobotControls:
-    def __init__(self, device_name='COM7', baudrate=1_000_000):
+    def __init__(self, device_name='/dev/tty.usbmodem14401', baudrate=1_000_000):
         # ex) Windows: "COM*", Linux: "/dev/ttyUSB*", Mac: "/dev/tty.usbserial-*"
         self.device_name = device_name
         self.baudrate = baudrate
         self.packetHandler = None
         self.portHandler = None
+        if not DYNAMIXEL_AVAILABLE:
+            raise ImportError("dynamixel_sdk is not available. Use MockRobotControls or install the SDK.")
 
     def open_com(self):
         # Initialize PortHandler instance
@@ -114,3 +123,58 @@ class RobotControls:
         elif dxl_error != 0:
             print("%s" % self.packetHandler.getRxPacketError(dxl_error))
         return dxl_present_speed
+
+
+class MockRobotControls:
+    """
+    Lightweight stand-in for RobotControls that avoids any hardware I/O.
+    Stores motor state in-memory so higher-level code can run without a serial port.
+    """
+
+    def __init__(self, device_name=None, baudrate=None, initial_position=512):
+        self.device_name = device_name or "mock-port"
+        self.baudrate = baudrate or 0
+        self.packetHandler = None
+        self.portHandler = None
+        self._positions = {}
+        self._speeds = {}
+        self._initial_position = initial_position
+
+    def open_com(self):
+        print(f"[MOCK] Opening dummy connection on {self.device_name} @ {self.baudrate} baud")
+
+    def close_com(self):
+        print("[MOCK] Closing dummy connection")
+
+    def torque_enable_control(self, motor_id, enable=False):
+        print(f"[MOCK] Torque {'EN' if enable else 'DIS'} for motor {motor_id}")
+        return True
+
+    def ping_motor(self, motor_id):
+        print(f"[MOCK] Ping motor {motor_id}: OK")
+
+    def set_moving_speed(self, motor_id, speed):
+        assert speed >= 0 and speed <= 1023, "Speed must be between 0 and 1023"
+        self._speeds[motor_id] = speed
+        print(f"[MOCK] Set speed {speed} for motor {motor_id}")
+        return True
+
+    def set_torque_limit(self, motor_id, torque):
+        assert torque >= 0 and torque <= 1023, "Torque must be between 0 and 1023"
+        print(f"[MOCK] Set torque limit {torque} for motor {motor_id}")
+        return True
+
+    def set_goal_position(self, motor_id, goal_position):
+        self._positions[motor_id] = goal_position
+        print(f"[MOCK] Set goal position {goal_position} for motor {motor_id}")
+
+    def move(self, motor_id, goal_position, margin_of_error):
+        # Simulate immediate movement
+        self.set_goal_position(motor_id, goal_position)
+        time.sleep(0.01)
+
+    def read_current_position(self, motor_id):
+        return self._positions.get(motor_id, self._initial_position)
+
+    def read_current_speed(self, motor_id):
+        return self._speeds.get(motor_id, 0)

@@ -1,12 +1,14 @@
-from robot_controls import RobotControls
+from robot_controls import RobotControls, MockRobotControls
 import threading
 
 
 class Robot:
 
-    def __init__(self, device_name="COM7", baudrate=1_000_000, dxl_ids=[1, 2, 3, 4]):
+    def __init__(self, device_name="/dev/tty.usbmodem14401", baudrate=1_000_000, dxl_ids=[1, 2, 3, 4], mock=True):
         self.dxl_ids = dxl_ids
-        self.robot_control = RobotControls(device_name, baudrate)
+        self.mock = mock
+        controls_cls = MockRobotControls if mock else RobotControls
+        self.robot_control = controls_cls(device_name, baudrate)
 
     def initialize(self):
         self.robot_control.open_com()
