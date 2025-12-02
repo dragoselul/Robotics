@@ -43,9 +43,9 @@ class RobotKinematics:
         """
         q1, q2, q3, q4 = q
 
-        T01, T02, T03, T04, T05= transfomations.transformation(q1, q2, q3, q4)
+        dictionary_of_transformations= transfomations.transformation(q1, q2, q3, q4)
 
-        return T04, T05
+        return dictionary_of_transformations["T04"], dictionary_of_transformations["T05"]
 
     def get_end_effector_pos(self, q):
         T04, _ = self.forward_kinematics(q)
@@ -54,7 +54,7 @@ class RobotKinematics:
     # ========================================================================
     # 3. INVERSE KINEMATICS (Problem 2 & 3)
     # ========================================================================
-    def inverse_kinematics(self, target_pos, orientation):
+    def inverse_kinematics(self, target_pos, orientation=None):
         """
         ALWAYS ELBOW UP - hardcoded inside the transformations script
         Standard geometric IK solution.
@@ -62,8 +62,11 @@ class RobotKinematics:
         Self has information about the geomtry of the robot
         transformations script models all the kinematics of the robot
         """
-        
-        q = transfomations.IK4(target_pos, orientation)
+        if orientation is None:
+            # Default to stylus pointing along +X in base frame
+            orientation = [1, 0, 0]
+
+        q = transfomations.IK4(orientation, target_pos)
 
         return q
 
@@ -230,25 +233,3 @@ class RobotKinematics:
 # ============================================================================
 # EXAMPLE USAGE (Template Method Pattern)
 # ============================================================================
-
-# if __name__ == "__main__":
-#     robot = RobotKinematics()
-
-#     # 1. Define Task (e.g., Circle Point)
-#     target = [0.150, 0.0, 0.120]  # x, y, z
-
-#     # 2. Calculate IK
-#     q = robot.inverse_kinematics(target)
-#     print(f"Joint Angles: {np.degrees(q)}")
-
-#     # 3. Verify with FK
-#     T04, _ = robot.forward_kinematics(q)
-#     print(f"FK Position: {T04[:3, 3]}")
-
-#     # 4. Calculate Jacobian
-#     J = robot.compute_jacobian(q)
-#     print(f"Jacobian Condition: {np.linalg.cond(J)}")
-
-#     # 5. Calculate Required Torques for 1N Load
-#     tau = robot.compute_static_torques(q)
-#     print(f"Static Torques: {tau}")

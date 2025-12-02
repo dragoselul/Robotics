@@ -95,7 +95,7 @@ def DH_np(theta, dz, dx, alpha):
         @ rotation_x_np(alpha)
     )
 
-def transformation(theta1, theta2, theta3, theta4, base_offset_deg=60.0):
+def transformation(theta1, theta2, theta3, theta4):
     """
     Compute all homogeneous transforms from base (0) to frame 4 (stylus tip).
 
@@ -127,10 +127,10 @@ def transformation(theta1, theta2, theta3, theta4, base_offset_deg=60.0):
         "T05": T05
     }
 
-def IK4(X_des, O_des, elbow_up=True, base_offset_deg=60.0):
+def IK4(X_des, O_des, elbow_up=True):
     """
-    X_des : desired end-effector x-axis (3,) in frame {0}
-    O_des : desired end-effector origin o_4 (3,) in frame {0}
+    X_des (ORIENTATION) : desired end-effector x-axis (3,) in frame {0}
+    O_des (POSITION) : desired end-effector origin o_4 (3,) in frame {0}
     elbow_up : choose IK03 branch (True = elbow up, False = elbow down)
     base_offset_deg : base rotation offset (same as in transformations)
 
@@ -154,7 +154,7 @@ def IK4(X_des, O_des, elbow_up=True, base_offset_deg=60.0):
 
     # 4) Build numeric R03 for that branch using our FK
     # theta4 can be 0.0 here because T03 does not depend on theta4
-    Ts = transformation(t1, t2, t3, 0.0, base_offset_deg=base_offset_deg)
+    Ts = transformation(t1, t2, t3, 0.0)
     T03 = Ts["T03"]
     R03 = T03[:3, :3]
 

@@ -23,28 +23,28 @@ def main():
     
     # Load your calibration so we know the Z-height!
     # (Or hardcode it if you know it, e.g., 0.122 from your previous logs)
-    controller.load_calibration('calibration.npy')
-    # Get keyboard surface height from calibration
-    keyboard_z = controller.workspace['z_height']  # 0.0895m
+    # controller.load_calibration('calibration.npy')
+    # # Get keyboard surface height from calibration
+    # keyboard_z = controller.workspace['z_height']  # 0.0895m
 
-    keyboard_center = controller.workspace['center']  # [0.028, -0.026, 0.089]
+    # keyboard_center = controller.workspace['center']  # [0.028, -0.026, 0.089]
 
-    # Define a target key position (e.g., center of keyboard)
-    target_key = [
+    # # Define a target key position (e.g., center of keyboard)
+    # target_key = [
 
-        keyboard_center[0]+0.030,      # x: 0.028m
-        keyboard_center[1]-0.030,      # y: -0.026m  
-        keyboard_z-0.0               # z: 0.089m (surface height)
-    ]
+    #     keyboard_center[0]+0.030,      # x: 0.028m
+    #     keyboard_center[1]-0.030,      # y: -0.026m  
+    #     keyboard_z-0.0               # z: 0.089m (surface height)
+    # ]
 
-    # Move directly using robot base coordinates
-    controller.move_to_position_smooth(
-        target_key[0], 
-        target_key[1], 
-        target_key[2]
-    )
+    # # Move directly using robot base coordinates
+    # controller.move_to_position_smooth(
+    #     target_key[0], 
+    #     target_key[1], 
+    #     target_key[2]
+    # )
 
-    execute_circle_movement(controller=controller, center=[0.150, 0, 0.120], radius=0.032)
+    execute_circle_movement(controller=controller, center=[150, 0, 120], radius=32)
 
     # # 2. Setup Camera
     # # -------------------
@@ -112,7 +112,7 @@ def main():
     # # Cleanup
     # cap.release()
     # cv2.destroyAllWindows()
-    controller.close()
+    # controller.close()
 
 if __name__ == "__main__":
     main()

@@ -32,7 +32,7 @@ def get_joint_positions_for_plotting(kin, q):
     """
     q1, q2, q3, q4 = q
 
-    # Link Lengths (must match your RobotFormulas)
+    # Link Lengths (must match the RobotFormulas)
     d1 = kin.d1
     a2 = kin.a2
     a3 = kin.a3
@@ -75,7 +75,7 @@ def get_joint_positions_for_plotting(kin, q):
     return [p0, p1, p2, p3, p4]
 
 
-def execute_circle_movement(controller, center, radius, plane='yz', num_points=37, speed=100):
+def execute_circle_movement(controller, center, radius, plane='yz', num_points=37, speed=100, orientation=None):
     """
     Makes the robot physically move in a circle.
     
@@ -86,6 +86,7 @@ def execute_circle_movement(controller, center, radius, plane='yz', num_points=3
         plane: 'yz' (front), 'xz' (side), or 'xy' (ground)
         num_points: Number of waypoints to discretize the circle
         speed: Movement speed (if supported by controller)
+        orientation: Desired end-effector x-axis direction (3,)
     """
     print(f"Executing Circle Movement: Center={center}, Radius={radius}, Plane={plane}")
     
@@ -116,8 +117,11 @@ def execute_circle_movement(controller, center, radius, plane='yz', num_points=3
         
         # Move to the point
         # Using move_to_position from controller which handles IK
+        # Orientation: if none provided, align x-axis toward (x,y,0) like MATLAB configCalculator
+        use_orientation = orientation if orientation is not None else [x, y, 0.0]
+
         print("x=", x, "y=", y, "z=", z)
-        result = controller.move_to_position(x, y, z)
+        result = controller.move_to_position_smooth(x, y, z, orientation=use_orientation)
         
         # Check if result is False (failed) or an array (success)
         if isinstance(result, bool) and not result:
@@ -135,11 +139,11 @@ def run_problem3():
     # 1. Setup Controller
     # using MockRobot for simulation visualization
     robot_hw = MockRobot()
-    controller = RobotKinematicsController(robot_hw, mock=True)
+    controller = RobotKinematicsController(robot_hw, mock=False)
 
     # 2. Define Task Parameters
-    center = np.array([0.150, 0.0, 0.120])
-    radius = 0.032
+    center = np.array([150, 0.0, 120])
+    radius = 32
     num_points = 37
 
     # 3. Generate Trajectory Points
@@ -160,13 +164,22 @@ def run_problem3():
 
     print("Computing Inverse Kinematics...")
     for pt in waypoints:
-        q = controller.kin.inverse_kinematics(pt)
+        # Orientation per MATLAB: stylus x-axis is projection of the point on XY (z=0)
+        dyn_orientation = [pt[0], pt[1], 0.0]
+        q = controller.kin.inverse_kinematics(pt, orientation=dyn_orientation)
+        controller.kin.move_joints(q)
         if q is not None:
             joint_history.append(q)
             T04, _ = controller.kin.forward_kinematics(q)
             actual_path.append(T04[:3, 3])
 
+    joint_history = np.array(joint_history)
     actual_path = np.array(actual_path)
+
+    # 4b. (Optional) Command the joint angles directly
+    # Uncomment to drive the robot along the precomputed joint sequence.
+    # for q in joint_history:
+    #     controller.move_joints(q)
 
     # 5. VISUALIZATION
     print("Visualizing result...")

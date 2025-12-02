@@ -24,7 +24,7 @@ class RobotKinematicsController:
     - Uses Robot class for hardware communication.
     """
 
-    def __init__(self, robot, verbose=False, mock=True):
+    def __init__(self, robot, verbose=False, mock=False):
         """
         Args:
             robot: Instance of your Robot class
@@ -68,7 +68,7 @@ class RobotKinematicsController:
         """Initialize robot, enable torque, and go to home."""
         print("Initializing Robot Controller...")
         self.robot.initialize()  # Calls your Robot.initialize() (opens COM, sets speed)
-        self.move_to_home()
+        self.move_to_position(182, 0, 125, [1, 0, 0])
         # Ensure torque is enabled for control
         self.robot.enable_torque([1, 2, 3, 4])
 
@@ -204,23 +204,19 @@ class RobotKinematicsController:
         if self.verbose:
             print(f"Moving to angles (deg): {np.degrees(joint_angles)}")
 
-    def move_to_home(self):
-        """Go to home position (2.61799, 2.61799, 2.61799, 2.61799 rad)."""
-        print("Moving to Home...")
-        self.move_joints(self.home_angles)
-
-    def move_to_position(self, x, y, z, elbow_up=True):
+    def move_to_position(self, x, y, z, orientation=None):
         """
         Move to position in ROBOT BASE coordinates.
         
         Args:
             x, y, z: Target position in robot base frame (meters)
+            orientation: Desired end-effector x-axis direction in base frame (3,)
             elbow_up: Elbow configuration
         """
         target = [x, y, z]
 
         # 1. Calculate IK
-        q = self.kin.inverse_kinematics(target)
+        q = self.kin.inverse_kinematics(target, orientation=orientation)
         if q is None:
             print(f"⚠ IK failed for target {target}")
             return False
@@ -249,37 +245,20 @@ class RobotKinematicsController:
         self.move_joints(q)
         return q
 
-    def move_to_world_position(self, world_x, world_y, world_z, elbow_up=True):
-        """
-        Move to a position specified in WORLD coordinates.
-        Automatically transforms to robot base frame.
-        
-        Args:
-            world_x, world_y, world_z: Target in world frame (meters)
-            elbow_up: Elbow configuration
-        """
-        # Transform world coords -> robot coords
-        robot_coords = self.transform_world_to_robot([world_x, world_y, world_z])
-        
-        if self.verbose:
-            print(f"World: ({world_x:.3f}, {world_y:.3f}, {world_z:.3f}) -> Robot: ({robot_coords[0]:.3f}, {robot_coords[1]:.3f}, {robot_coords[2]:.3f})")
-        
-        # Use existing method
-        return self.move_to_position(robot_coords[0], robot_coords[1], robot_coords[2], elbow_up)
-
-    def move_to_position_smooth(self, x, y, z, duration=3.0, use_world_coords=False):
+    def move_to_position_smooth(self, x, y, z, orientation=None, duration=3.0):
         """
         Smoothly interpolate from CURRENT position to TARGET position.
         Uses Quintic Polynomial trajectory.
         
         Args:
             x, y, z: Target position (meters)
+            orientation: Desired end-effector x-axis direction in base frame (3,)
             duration: Movement time (seconds)
             use_world_coords: If True, x/y/z are in world frame; if False, robot base frame
         """
         
         target = [x, y, z]
-        q_target = self.kin.inverse_kinematics(target, orientation=)
+        q_target = self.kin.inverse_kinematics(target, orientation=orientation)
 
         if q_target is None:
             print(f"⚠ Target {target} unreachable!")
@@ -343,7 +322,7 @@ class RobotKinematicsController:
         for i, angle in enumerate(joint_angles):
             motor_id = i + 1
             val = rad_to_motor_units(angle)
-            motor_positions[motor_id] = val
+            motor_positions[motor_id] = 512 + val 
         return motor_positions
 
     def motor_units_to_angles(self, positions_dict):
@@ -352,7 +331,7 @@ class RobotKinematicsController:
         for motor_id, pos in positions_dict.items():
             idx = motor_id - 1
             if 0 <= idx < 4:
-                angles[idx] = motor_units_to_rad(pos)
+                angles[idx] = motor_units_to_rad(pos - 512)
         return angles
 
     # ========================================================================

@@ -4,7 +4,7 @@ import threading
 
 class Robot:
 
-    def __init__(self, device_name="/dev/tty.usbmodem14401", baudrate=1_000_000, dxl_ids=[1, 2, 3, 4], mock=True):
+    def __init__(self, device_name="/dev/tty.usbmodem14401", baudrate=1_000_000, dxl_ids=[1, 2, 3, 4], mock=False):
         self.dxl_ids = dxl_ids
         self.mock = mock
         controls_cls = MockRobotControls if mock else RobotControls
@@ -73,8 +73,8 @@ class Robot:
                 case 4:
                     if goal_position < 0:
                         goal_position = 0
-                    elif goal_position > 500:
-                        goal_position = 500
+                    elif goal_position > 900:
+                        goal_position = 900
                 case _:
                     raise ValueError("Invalid dxl_id")
             
