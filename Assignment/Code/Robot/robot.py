@@ -80,14 +80,9 @@ class Robot:
             
             target_positions[motor_id] = goal_position
 
-        # 2. Send all commands simultaneously (or as fast as possible)
         for motor_id, goal in target_positions.items():
             self.robot_control.set_goal_position(motor_id, goal)
 
-        # 3. Wait for all motors to reach their goals
-        # Note: For very smooth trajectory, you might want to remove this wait 
-        # and handle timing in the controller. But for now, this ensures 
-        # simultaneous movement instead of sequential.
         while True:
             all_reached = True
             # Read all positions

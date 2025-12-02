@@ -9,14 +9,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 from robot import Robot
 from robot_controller import RobotKinematicsController
 
-# ==================================================================================
-# CONFIGURATION
-# ==================================================================================
-
-# Vision Param (Meters) - CRITICAL: Must be accurate!
-REAL_RADIUS = 0.035       
-
-# Movement Params (Millimeters)
+REAL_RADIUS = 0.035
 APPROACH_DISTANCE_MM = 100.0 
 THROUGH_DISTANCE_MM = 100.0   
 
@@ -73,9 +66,6 @@ def main():
         return
     
     try:
-        # -------------------------------------------------------------------------
-        # STEP 1: OBSERVE
-        # -------------------------------------------------------------------------
         print("\n1. Moving to Observation Pose...")
         controller.move_to_position(140, 0, 125, [1, 0, 0]) 
         time.sleep(2.0)
@@ -87,9 +77,6 @@ def main():
         u, v, r_pix = data
         current_joints = controller.current_joint_angles
 
-        # -------------------------------------------------------------------------
-        # STEP 2: CALCULATE TARGET (Direct Single-View)
-        # -------------------------------------------------------------------------
         print("\n2. Calculating Target...")
         
         # This returns [X, Y, Z] in MILLIMETERS
@@ -99,20 +86,12 @@ def main():
         
         print(f"TARGET DETECTED AT (MM): {target_mm}")
         print(f"ROBOT CURRENT POS (MM):  {controller.get_end_effector_pose()[:3]}")
-        
-        # Sanity Check: Is the target ridiculously close to the base?
-        # A target X < 150mm means it's basically inside/behind the gripper.
+
         if target_mm[0] < 150.0:
             print("WARNING: Target is suspiciously close to base.")
             print("   -> Check R_cam_tool matrix (Are Z and X swapped?)")
             print("   -> Check REAL_RADIUS (Is it accurate?)")
 
-        # -------------------------------------------------------------------------
-        # STEP 3: EXECUTE POKE
-        # -------------------------------------------------------------------------
-        
-        # Calculate Approach Vector (Direction from Base to Target)
-        # We ignore Z for the orientation vector (keep tool horizontal)
         target_x, target_y, _ = target_mm
         theta_yaw = np.arctan2(target_y, target_x)
         approach_dir = np.array([np.cos(theta_yaw), np.sin(theta_yaw), 0.0])

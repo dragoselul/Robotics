@@ -2,7 +2,7 @@ import os
 import sys
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
-from Assignment.Code import util
+from Dragos import util
 import sympy as sp
 
 """

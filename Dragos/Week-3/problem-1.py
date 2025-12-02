@@ -1,11 +1,11 @@
 import sys
 import os
 
-from Assignment.Code.util import RotationMatrices
+from Dragos.util import RotationMatrices
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 
-from Assignment.Code import util
+from Dragos import util
 import sympy as sp
 
 

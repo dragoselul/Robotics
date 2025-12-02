@@ -1,8 +1,8 @@
 import os
 import sys
 
-from Assignment.Code.util import AlongAxis
-from Assignment.Code.util import HomogeneousTransformMatrix
+from Dragos.util import AlongAxis
+from Dragos.util import HomogeneousTransformMatrix
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 import sympy as sp
