@@ -1,5 +1,5 @@
-from util.RotationMatrices import *
-from util.AlongAxis import *
+from .RotationMatrices import *
+from .AlongAxis import *
 import sympy as sp
 
 class HomogeneousTransformMatrix:

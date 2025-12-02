@@ -1,11 +1,10 @@
 import os
 import sys
 
-from util import RotationMatrices, AlongAxis
-from util.HomogenousMatrices import HomogeneousTransformMatrix
+from Dragos.util import AlongAxis
+from Dragos.util import HomogeneousTransformMatrix
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
-import util
 import sympy as sp
 
 """

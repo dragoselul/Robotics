@@ -1,0 +1,114 @@
+@startuml
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+skinparam packageStyle rectangle
+
+' ==========================================
+' LAYER 1: HIGH-LEVEL CONTROLLER
+' ==========================================
+package "High-Level Control" {
+    class RobotKinematicsController {
+      - robot: Robot
+      - kin: RobotKinematics
+      - vision: RobotVision
+      - current_joint_angles: list
+      - robot_base_in_world: array
+      - calibration_points: dict
+      - workspace: dict
+      - mock: bool
+      
+      + __init__(robot, verbose, mock)
+      
+      __ Initialization __
+      + initialize()
+      + close()
+      
+      __ Calibration & Coordinates __
+      + set_robot_base_position(x, y, z)
+      + transform_world_to_robot(point)
+      + transform_robot_to_world(point)
+      + calibrate_workspace()
+      + load_calibration(filename)
+      
+      __ Movement Logic __
+      + move_joints(joint_angles)
+      + move_to_home()
+      + move_to_position(x, y, z, elbow_up)
+      + move_to_world_position(x, y, z, elbow_up)
+      + move_to_position_smooth(x, y, z, duration, use_world)
+      + execute_trajectory(q_start, q_end, duration)
+      + execute_waypoint_sequence(waypoints, ...)
+      
+      __ Vision Tasks __
+      + press_key_at_pixel(u, v, height)
+      + move_to_pixel(u, v, height)
+      
+      __ Feedback __
+      + update_current_state()
+      + get_end_effector_pose()
+      + get_end_effector_world_pose()
+    }
+}
+
+' ==========================================
+' LAYER 2: LOGIC & MATH
+' ==========================================
+package "Logic & Math" {
+    class RobotKinematics {
+      + forward_kinematics(q)
+      + inverse_kinematics(target_pos)
+      + compute_jacobian(q)
+      + compute_static_torques(q, force)
+      + generate_quintic_trajectory(start, end, time)
+      ' ... (other math methods)
+    }
+
+    class RobotVision {
+       + get_key_position(u, v, angles, height)
+    }
+
+    class "translation" as TranslationUtils << (U,lightblue) Utility >> {
+        + rad_to_motor_units()
+        + motor_units_to_rad()
+    }
+}
+
+' ==========================================
+' LAYER 3: HARDWARE ABSTRACTION
+' ==========================================
+package "Hardware Abstraction" {
+    class Robot {
+      + initialize()
+      + enable_torque(ids)
+      + move(positions)
+      + read_current_position(ids)
+      + set_move_speed(ids, speed)
+      + close()
+    }
+
+    class RobotControls {
+      + open_com()
+      + set_goal_position(id, pos)
+      + read_current_position(id)
+      + close_com()
+      ' ... (SDK wrappers)
+    }
+}
+
+' ==========================================
+' RELATIONSHIPS
+' ==========================================
+
+' Controller Relationships
+RobotKinematicsController o-- Robot : controls >
+RobotKinematicsController *-- RobotKinematics : owns >
+RobotKinematicsController *-- RobotVision : owns >
+RobotKinematicsController ..> TranslationUtils : uses >
+
+' Logic Relationships
+RobotVision ..> RobotKinematics : uses >
+
+' Hardware Relationships
+Robot "1" *-- "1" RobotControls
+
+@enduml
