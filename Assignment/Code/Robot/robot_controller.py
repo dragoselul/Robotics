@@ -68,7 +68,7 @@ class RobotKinematicsController:
         """Initialize robot, enable torque, and go to home."""
         print("Initializing Robot Controller...")
         self.robot.initialize()  # Calls your Robot.initialize() (opens COM, sets speed)
-        self.move_to_position(182, 0, 125, [1, 0, 0])
+        self.move_to_position(140, 0, 125, [1, 0, 0])
         # Ensure torque is enabled for control
         self.robot.enable_torque([1, 2, 3, 4])
 
@@ -183,7 +183,7 @@ class RobotKinematicsController:
     # MOVEMENT METHODS (The "Business Logic")
     # ========================================================================
 
-    def move_joints(self, joint_angles):
+    def move_joints(self, joint_angles, speed=150):
         """
         Move robot to specified joint angles (radians).
         Handles conversion and calls robot.move()
@@ -192,7 +192,7 @@ class RobotKinematicsController:
         motor_positions = self.angles_to_motor_positions(joint_angles)
         if self.verbose:
             print(f"Moving to motor positions: {motor_positions}")
-        self.robot.set_move_speed([1, 2, 3, 4], speed=150)  # Set a reasonable speed
+        self.robot.set_move_speed([1, 2, 3, 4], speed=speed)  # Set a reasonable speed
         
         # 2. Send to Hardware
         if not self.mock:
@@ -245,7 +245,7 @@ class RobotKinematicsController:
         self.move_joints(q)
         return q
 
-    def move_to_position_smooth(self, x, y, z, orientation=None, duration=3.0):
+    def move_to_position_smooth(self, x, y, z, orientation=None, duration=3.0, speed=150):
         """
         Smoothly interpolate from CURRENT position to TARGET position.
         Uses Quintic Polynomial trajectory.
@@ -266,10 +266,10 @@ class RobotKinematicsController:
 
         # Generate Trajectory from current state
         print(f"Executing Smooth Trajectory to {target} over {duration}s...")
-        self.execute_trajectory(self.current_joint_angles, q_target, duration)
+        self.execute_trajectory(self.current_joint_angles, q_target, duration, speed=speed)
         return True
 
-    def execute_trajectory(self, q_start, q_end, duration):
+    def execute_trajectory(self, q_start, q_end, duration, speed=150):
         """
         Generates and executes a time-based trajectory.
         
@@ -293,7 +293,7 @@ class RobotKinematicsController:
             time.sleep(sleep_time)
 
         # Ensure we hit the exact end point
-        self.move_joints(q_end)
+        self.move_joints(q_end, speed=speed)
         print("✓ Trajectory Finished.")
 
     # ========================================================================
@@ -311,6 +311,18 @@ class RobotKinematicsController:
         # 2. Convert to radians
         self.current_joint_angles = self.motor_units_to_angles(positions_dict)
         return self.current_joint_angles
+
+    def get_end_effector_pose(self):
+        """Returns current (x, y, z) of end effector in robot base frame."""
+        self.update_current_state()  # Get fresh data
+        T04, _ = self.kin.forward_kinematics(self.current_joint_angles)
+        print(f"End Effector Pose (Robot Frame): {T04[:3, 3]}")
+        return T04[:3, 3]
+
+    # def get_end_effector_world_pose(self):
+    #     """Returns current (x, y, z) of end effector in world frame."""
+    #     robot_pose = self.get_end_effector_pose()
+    #     return self.transform_robot_to_world(robot_pose)
 
     # ========================================================================
     # HELPERS: CONVERSION

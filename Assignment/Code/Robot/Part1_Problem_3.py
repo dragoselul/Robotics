@@ -75,7 +75,7 @@ def get_joint_positions_for_plotting(kin, q):
     return [p0, p1, p2, p3, p4]
 
 
-def execute_circle_movement(controller, center, radius, plane='yz', num_points=37, speed=100, orientation=None):
+def execute_circle_movement(controller, center, radius, plane='yz', num_points=37, speed=150, orientation=None):
     """
     Makes the robot physically move in a circle.
     
@@ -121,7 +121,7 @@ def execute_circle_movement(controller, center, radius, plane='yz', num_points=3
         use_orientation = orientation if orientation is not None else [x, y, 0.0]
 
         print("x=", x, "y=", y, "z=", z)
-        result = controller.move_to_position_smooth(x, y, z, orientation=use_orientation)
+        result = controller.move_to_position_smooth(x, y, z, orientation=use_orientation, duration=0.5, speed=speed)
         
         # Check if result is False (failed) or an array (success)
         if isinstance(result, bool) and not result:

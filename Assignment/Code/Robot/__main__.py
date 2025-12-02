@@ -17,7 +17,7 @@ def main():
     # 1. Initialize Robot
     # -------------------
     # Assuming 'Robot' is your hardware interface class
-    hardware = Robot(device_name='/dev/tty.usbmodem14401', baudrate=1_000_000, dxl_ids=[1, 2, 3, 4]) 
+    hardware = Robot(device_name='/dev/ttyACM0', baudrate=1_000_000, dxl_ids=[1, 2, 3, 4]) 
     controller = RobotKinematicsController(hardware, verbose=True)
     controller.initialize()
     
@@ -44,11 +44,11 @@ def main():
     #     target_key[2]
     # )
 
-    execute_circle_movement(controller=controller, center=[150, 0, 120], radius=32)
+    execute_circle_movement(controller=controller, center=[150, 0, 120], radius=32, speed=500)
 
-    # # 2. Setup Camera
-    # # -------------------
-    # # cap = cv2.VideoCapture(2) # Adjust ID if you have multiple cams
+    # 2. Setup Camera
+    # -------------------
+    # cap = cv2.VideoCapture(2) # Adjust ID if you have multiple cams
     
     # # Global variables for mouse callback
     # click_point = None
