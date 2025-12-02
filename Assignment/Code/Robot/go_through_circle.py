@@ -20,7 +20,7 @@ REAL_RADIUS = 0.035
 APPROACH_DISTANCE_MM = 100.0 
 THROUGH_DISTANCE_MM = 100.0   
 
-CAMERA_INDEX = 0
+CAMERA_INDEX = 1
 
 def detect_circle_in_frame(frame):
     """Detects the largest circle in the frame."""
@@ -63,7 +63,7 @@ def capture_circle_data(cap, prompt_text="Capture"):
 
 def main():
     print("Initializing Robot...")
-    robot = Robot(device_name='/dev/ttyACM0', baudrate=1_000_000, dxl_ids=[1, 2, 3, 4])
+    robot = Robot(device_name='COM7', baudrate=1_000_000, dxl_ids=[1, 2, 3, 4])
     controller = RobotKinematicsController(robot)
     controller.initialize()
     
@@ -132,23 +132,30 @@ def main():
         )
         time.sleep(1.0)
         
-        # 2. Poke Through
-        print("POKING THROUGH!...")
-        controller.move_to_position_smooth( 
-            through_pos[0], through_pos[1], through_pos[2], 
-            orientation=approach_dir
-        )
-        time.sleep(1.0)
+        try:
+            # 2. Poke Through
+            print("POKING THROUGH!...")
+            controller.move_to_position_smooth( 
+                through_pos[0], through_pos[1], through_pos[2], 
+                orientation=approach_dir
+            )
+            time.sleep(2.0)
+            controller.move_to_position_smooth( 
+                through_pos[0], through_pos[1], through_pos[2]-20, 
+                orientation=approach_dir
+            )
+        except Exception as e:
+            pass
         
         # 3. Retract
         print("Retracting...")
         controller.move_to_position_smooth(
             approach_pos[0], approach_pos[1], approach_pos[2], 
-            orientation=approach_dir
+            orientation=approach_dir, speed=150
         )
         
         # Go Home
-        controller.move_to_position(140, 0, 125, [1, 0, 0])
+        controller.move_to_position_smooth(140, 0, 125, orientation=[1, 0, 0], speed=150)
 
     except Exception as e:
         print(f"An error occurred: {e}")
@@ -158,7 +165,9 @@ def main():
     finally:
         cap.release()
         cv2.destroyAllWindows()
+        time.sleep(10)
         controller.close()
            
 if __name__ == "__main__":
     main()
+    

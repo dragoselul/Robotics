@@ -5,7 +5,13 @@ def cos_theorem(a, b, c):
     Law of cosines:
     returns angle opposite side a in a triangle with sides a, b, c
     """
-    return np.arccos((b**2 + c**2 - a**2) / (2 * b * c))
+    try:
+        if b == 0 and c == 0:
+            return 0.0
+        arccos = np.arccos((b**2 + c**2 - a**2) / (2 * b * c))
+    except Warning:
+        print("Warning in cos_theorem with values:", a, b, c)
+    return arccos
 
 
 def IK03(O, elbow_up = True):

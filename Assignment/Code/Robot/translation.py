@@ -6,8 +6,11 @@ def rad_to_motor_units(rad):
     """Convert radians to motor movement units (integer)."""
     deg = rad * (180 / np.pi)  # radians to degrees
     # Round to nearest whole motor unit to keep conversions invertible
-
-    movement = int(np.round(deg / PER_UNIT_VALUE))
+    try:
+        movement = int(np.round(deg / PER_UNIT_VALUE))
+    except Warning:
+        print("Warning in rad_to_motor_units with value:", rad)
+        movement = int(np.round(deg / PER_UNIT_VALUE))
     return movement
 
 def motor_units_to_rad(movement):
